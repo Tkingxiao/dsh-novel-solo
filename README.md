@@ -73,6 +73,22 @@ package.json        dsh.client metadata so the plugin is recognizable by the plu
 | `DSH_NOVEL_SKIP_DEPLOY` | `1` skips preset deployment | none |
 | `DSH_NOVEL_REDEPLOY` | `1` forcibly overwrites an existing preset (use with care) | none |
 
+## Test environment
+
+This plugin was tested end-to-end with a local model:
+
+- **Runtime**: llama.cpp (`llama-b10615-bin-win-cuda-13.3-x64`)
+- **Model**: `Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf`
+- **Context**: `ctx=65536`, `reasoning on`
+- **Hardware**: laptop RTX 4060 8GB + 32GB RAM + AMD 7840H CPU
+- **Measured on a ~10k-char novel**: 22 token/s, 98% cache hit; 78.8k input / 36.9k output / 2.3M cache; 22 turns / 63 steps, 1h03m42s total
+
+**Key server flags (llama-server)**:
+
+```sh
+llama-server.exe -m <model.gguf> --no-mmproj --load-mode none --n-cpu-moe 30 -c 65536 -ngl 999 -t 12 -b 1024 -ub 512 -ctk q8_0 -ctv q8_0 -fa on --fit off --no-warmup --poll 0 --temp 0.85 --top-k 20 --top-p 0.95 --min-p 0.05 --repeat-penalty 1.35 --presence-penalty 0.2 --frequency-penalty 0.2 --dry-multiplier 0.8 --dry-base 1.75 --jinja --reasoning on --reasoning-effort medium --reasoning-budget 2048 --reasoning-format deepseek --reasoning-preserve --cont-batching -np 1 --alias "qwen3.6-novel-nsfw-reason" --port 8090 --host 127.0.0.1 --ui --keep -1 --cache-ram 4096 --ctx-checkpoints 64
+```
+
 ## License
 
 MIT License

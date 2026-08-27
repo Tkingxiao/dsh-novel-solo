@@ -73,6 +73,22 @@ package.json        dsh.client 元数据，使插件可被插件市场/清单识
 | `DSH_NOVEL_SKIP_DEPLOY` | `1` 时跳过预设铺设 | 无 |
 | `DSH_NOVEL_REDEPLOY` | `1` 时强制覆盖已存在的预设（慎用） | 无 |
 
+## 特殊说明
+
+本插件在以下环境使用本地模型完成完整测试：
+
+- **运行框架**：llama.cpp（`llama-b10615-bin-win-cuda-13.3-x64`）
+- **测试模型**：`Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf`
+- **上下文**：`ctx=65536`，`reasoning on`
+- **设备**：笔记本 RTX 4060 8G + 32G 内存 + AMD 7840H CPU
+- **实测成绩（约 1 万字文本小说）**：22 token/s，缓存命中 98%；输入 78.8k / 输出 36.9k / 缓存 2.3M；22 轮 63 步，总耗时 1 小时 03 分 42 秒
+
+**关键启动参数（llama-server）**：
+
+```sh
+llama-server.exe -m <model.gguf> --no-mmproj --load-mode none --n-cpu-moe 30 -c 65536 -ngl 999 -t 12 -b 1024 -ub 512 -ctk q8_0 -ctv q8_0 -fa on --fit off --no-warmup --poll 0 --temp 0.85 --top-k 20 --top-p 0.95 --min-p 0.05 --repeat-penalty 1.35 --presence-penalty 0.2 --frequency-penalty 0.2 --dry-multiplier 0.8 --dry-base 1.75 --jinja --reasoning on --reasoning-effort medium --reasoning-budget 2048 --reasoning-format deepseek --reasoning-preserve --cont-batching -np 1 --alias "qwen3.6-novel-nsfw-reason" --port 8090 --host 127.0.0.1 --ui --keep -1 --cache-ram 4096 --ctx-checkpoints 64
+```
+
 ## 许可证
 
 MIT License
