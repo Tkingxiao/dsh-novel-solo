@@ -1,0 +1,58 @@
+{
+  "name": "dsh-novel-solo",
+  "version": "0.1.0",
+  "description": "novel-solo helper for DeepSeek Harness: an agent-count setting (1-12) in the General settings row, persisted to disk and consumed by the novel-solo preset to cap parallel subagent fan-out.",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "dsh-plugin",
+    "novel",
+    "settings"
+  ],
+  "license": "MIT",
+  "author": "Tkingxiao",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "cordis.patch.yml",
+    "template"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "immediately": true
+    }
+  }
+}

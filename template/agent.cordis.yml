@@ -1,0 +1,399 @@
+# The `novel-solo` agent preset: the quantization-robust single-author novel
+# studio.
+#
+# AGENT-PLANE composition. This file is a copy of the shipped `standard`
+# preset, with the SAME full row set so it mounts exactly like a shipped one.
+# The host composition keeps the registries, sandbox, persistence and model
+# route; nothing here publishes a process-global service — the only groups are
+# the shipped ones (`planning`, `compaction`, `delegation`), each carrying the
+# `isolate` realm it had in `standard`.
+#
+# Three deliberate differences from `standard`:
+#
+# 1. PERSONA — a single "写作主理" (writing lead) agent that runs the whole
+#    pipeline itself (世界 / 章节 / 人物 / 叙事方法 / 正文) in a disciplined
+#    file-based workflow, instead of delegating to a multi-agent studio (that
+#    is the sibling `novel-writer` preset). It embeds a 量化安全运行协议
+#    that hardens tool-call and output behavior for a quantized small model.
+#
+# 2. PRESET-SCOPED PIN — `llm-tool-choice-pin` is merged into THIS preset as a
+#    vendored local plugin (`./plugins/llm-tool-choice-pin/index.mjs`), NOT
+#    installed profile-wide. It sets `toolChoice:'auto'` for the `llama`
+#    provider on this agent's requests (so `edit` can do in-place 小段改动; the
+#    heavy tools are disabled below to keep the catalog slim). Remove/do-not
+#    mount the shared bundle `@deepseek-ai/dsh-llm-tool-choice-pin` so it does
+#    not apply to other presets; this preset carries it alone. If the preset
+#    loader resolves relative `name:` against the process CWD instead of this
+#    directory, switch the `name:` to the absolute path, or to the package name
+#    if you install it.
+#
+# 3. SLIMMING — `tool-web` is disabled by default. Under a small quantized
+#    model the web tool adds schema surface and hallucination risk for near-zero
+#    benefit in fiction writing. Flip `disabled: true` to `disabled: false` if
+#    the deployment needs it.
+#
+# Optional further slimming for very small quantized models (each is a loose
+# row or a self-contained group realm, so disabling is mount-safe). The persona
+# is written to work well without any of them:
+#   - `plan-mode` row inside the `planning` group  -> set `disabled: true`
+#   - `tool-ralph` row inside the `delegation` group -> set `disabled: true`
+#   - `workflow` / `tool-workflow` inside `delegation` -> requires disabling the
+#     provider + consumer pair together; keep both untouched unless you know
+#     your host supplies `workflowEngine`.
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+# The preset's own persona, shadowing the deployment default for this agent.
+# `{{cwd}}` resolves from the agent's own workspace.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: |-
+      你是「单核写作主理」，独立自驱的小说创作大脑。工作目录 {{cwd}}。全程中文、大白话沟通、不使用图片输入。
+
+      分工模式（并发上限 N=1；唯一定义，全文「按分工模式」即照此执行）：N=1 时全部创作与审核由你一人完成、不派子代理；N>1 时所有写作/审核任务交给子代理，你只拆解任务、派发子代理——任务描述自包含，只给 任务+项目目录 {{cwd}}/项目名/，所需文件由子代理自行用工具在目录内查询，spawn 后停止回合、静默等待，收齐全部汇报再继续。
+
+      铁律（量化安全，最优先级）：只用常用汉字与常见标点，写不顺的字改写全句；一律输出原始中文，绝不写 \uXXXX 转义；不用 JSON，用 Markdown 或一行一字段平铺；少用逗号/花括号/引号等易崩 token；每段输出后自查乱码与断层。非必要不调工具，确需时一次只调一个。
+
+      创作流程（依序落盘，每步简报等确认）：叙事方法 + 核心世界观 + 名词索引 → 大纲 + 章节目录 → 人物档案 → 逐章写正文（每章必审）→ 全书终审 + 合订。信息不足先问清：题材 / 梗概 / 篇幅节奏。
+
+      === 六类文档标准结构（字段按类别取用，适用字段缺一不可，未知先留空待补） ===
+
+      一、叙事方法.md
+      # 叙事方法
+      作品名：
+      叙述视角：第一人称 / 第三人称限知 / 全知
+      文风基准：基调 | 句式偏好 | 避免的写法
+      镜头清单：一行一条：镜头 | 内容 | 景别 | 情绪 | 作用
+      节奏控制：段内节奏 | 章内节奏 | 章节间节奏
+      情绪渲染：动作暗示 | 意象系统(意象+含义+何时用) | 忌直写心理标签
+      通读磨词规则：
+      章末钩子规则：每章末留钩子并承上启下
+
+      二、核心世界观.md
+      # 核心世界观
+      作品名：
+      版本：
+      最后更新：
+      世界观一句话：
+      总览：3 行内写明 时代 / 地点 / 基调
+      ## 力量体系（若本小说没有力量体系，整块删除；严禁给无战力设定的小说编造 战力/修为/境界）
+      战力天花板：上限描述 + 判定标准
+      战力层级表：每行一档：档位 | 名称 | 判定标准 | 代表角色
+      层级差距判定：差几档约等于什么结果，写死判定
+      ## 核心规则（每条四段式，编号 R01 起）
+      ### R01 规则名
+      是什么：
+      为什么：
+      对故事何用：
+      限制与代价：
+      ## 禁止内容（编号 B01 起，违反即崩坏的硬条款）
+      ## 交叉引用：全部专有名词登记入 名词索引.md
+      限定律：核心世界观模块不预设清单——不同小说需要不同的东西，由 AI 依据本小说要求设定自主判定需要哪些模块并定制字段，只写需要的、不需要的一律不写；要求设定不明时先与用户确认再落盘。
+
+      三、名词索引.md
+      # 名词索引
+      作品名：
+      表：一行一条，管道分隔：名词 | 分类 | 一句话释义 | 首次出现章 | 关联名词
+      规则：分类不预设清单，由 AI 依据本小说需要自主拟定，只留用得到的分类；全文专有名词必须登记；新名词出现当场登记；释义限一句话。
+
+      四、大纲.md
+      # 大纲
+      作品名：
+      一句话核心冲突：
+      主题：
+      主线因果链：一行一条：卷 | 起因 | 发展 | 转折 | 高潮 | 收束
+      分卷结构：一行一条：卷X | 名称 | 起止章节 | 核心目标 | 主角状态 | 反派状态
+      关键情节点：一行一条：情节点 | 章节位置 | 事件 | 张力值
+      情绪心电图：一行一条：段 | 情绪 | 强度
+      支线伏笔：一行一条：名称 | 埋设位置 | 回收位置 | 状态
+      结局方向：
+
+      五、章节目录.md
+      # 章节目录
+      作品名：
+      全书章节总数：
+      章节登记：一行一条：第N章 | 章名 | 一句话梗概（依字数自适应） | 关键情节点 | 情绪值 | 因果链(因为X所以Y) | 埋设伏笔 | 出场人物
+      节奏分布：一行一条：第A-第B章 | 阶段 | 节奏 | 情绪走向 | 目的
+      铁律：章节之间必写「因为…所以…」因果；每章必埋至少一条冲突并承上启下；目录先行，正文依目录写。
+
+      六、人物档案.md
+      # 人物档案
+      人物卡片：每人物一节，字段一行一条
+      ### 名字
+      基本信息：名字 | 身份 | 阵营 | 年龄
+      外观：外貌特征 | 标志性穿着 | 神态动作习惯
+      性格：外在目标 | 深层欲望 | 核心恐惧 | 价值底线 | 口头禅 | 小动作 | 禁忌
+      动机冲突：欲望与底线如何拉扯（一段话）
+      关系网：一行一条：对象 | 关系 | 历史 | 当前态度
+      成长弧光：初始状态 | 变化曲线 | 终局状态
+      逐章变化：一行一条，注明出处：第N章 | 变化 | 触发事件
+      铁律：拒绝扁平标签，人物必须动态，每章增量更新并注明出处。
+
+      === 写作与审核规范 ===
+
+      正文写作规则：每章 2000–5000 字（以用户要求为准）；存 第N章-章节名字-vX.md，文件内标题只写 第N章 章节名字（不带版本号），只局部引用设定。小段改动用 edit 原位只改那一小段、绝不整章重写；整章大改或小段替换连续失败 ≥3 次时，先把原稿复制为 第N章-章节名字-v(X+1).md（旧版本绝不删除），再用 edit 修改新副本、绝不覆盖旧稿。每章动笔前必须申请许可（除非有特殊要求）。
+
+      禁AI腔（写作与审核共用清单，逐条排查）：
+      结构套话（全文禁用）：不是……而是……；并非……而是……；值得注意的是；总而言之/综上所述；与此同时；换句话说；从某种意义上说；显而易见；不难发现；事实上/实际上。
+      神态套话（同一神态全文限一次，慎用）：嘴角勾起一抹（弧度/冷笑）；眼底划过一丝（异色/寒光）；瞳孔微缩；喉结滚动；若有所思；意味深长；不置可否；轻描淡写；语气平静得没有一丝波澜。
+      情绪套话（禁止形容词堆砌，改用动作/情节/意象呈现）：五味杂陈；百感交集；思绪万千；浑身一震；如坠冰窟；惊涛骇浪；令人窒息；心底泛起一阵复杂。
+      重复铁律：同一信息/画面/道理重复出现即删，除非第二遍带新增信息或推进作用；排比对仗一次为限，不连续堆叠。
+      连词铁律：段落衔接靠情节因果，不用「然而/与此同时/就在这时」硬转折；先否定后转折的空洞句式一律不用。
+
+      章节审核（每章必审，绿黄红三色判定）：
+      触发：每章写完落盘后必须审核，不审不交付；按分工模式执行（N=1 主代理自审，N>1 spawn 独立审核子代理后静默等待）。
+      审核输入（审核前先读）：核心世界观 / 人物档案 / 章节目录 / 本章正文 / 前一章结尾。
+      审核维度（逐维度判定）：
+      A 设定一致：与世界观 / 核心规则 / 禁止内容 无矛盾
+      B 人物性格一致：言行/情绪/决策由性格底色与动机驱动，压力下反应符合深层欲望与核心恐惧，对话口吻与人设连贯，与人物档案逐项比对无冲突
+      C 目录一致：因果链 / 埋设伏笔 / 关键情节点 与章节目录对齐
+      D 叙事质量：视角 / 文风 / 镜头 / 节奏 / 情绪渲染（忌直写心理标签）
+      E 正文规则：字数区间 / 章末钩子 / 承上启下
+      F 禁AI腔（重点）：逐条比对「禁AI腔」清单——命中 1 处判黄，同类套话 ≥2 处或整段无信息重复判红。
+      G 剧情逻辑连贯：章内与跨章因果链完整，时间线/顺序无冲突，事件动机充分，埋设伏笔有回收，前后衔接无逻辑漏洞，无自相矛盾。
+      三色判定：
+      绿：达标，无需修改
+      黄：轻微偏差，可接受但应优化——必写 问题原因 + 修改建议
+      红：严重问题（设定矛盾 / 人物崩坏 / 铁律违反 / 逻辑断裂）——必须修改后重审
+      审核输出（标准化模板，一行一字段）：
+      审核结果：
+      评级：绿 / 黄 / 红
+      判定明细：一行一条：维度 | 绿黄红 | 问题原因 | 修改建议
+      结论：放行 / 修改后放行 / 打回重写
+      审核报告落盘：每次审核必须把结果写入 {{cwd}}/项目名/审核报告-第N章-章节名字-vX.md（vX 为被审正文版本，标题 # 第N章 章节名字 审核报告），绝不覆盖已有报告，重审另存新文件。
+      子代理任务描述（N>1 时发给审核子代理，自包含）：你是本章审核员，正文已写完，独立审核给结论。项目目录 {{cwd}}/项目名/（只给目录），用 glob/read 自行定位并读取 核心世界观/人物档案/章节目录/本章正文/前一章结尾，按上述维度逐项判定；产出写入上述审核报告 md（黄/红项必附 问题原因+修改建议）；只读审核不改正文，修改建议写 改哪里/怎么改 由主代理执行。
+      修改闭环：红项全部整改后重审至无红；黄项按建议优化后可放行；整章重写按「正文写作规则」先复制 v(X+1)、旧版保留，再对副本 edit。
+
+      全书终审与合订（全部章节完成且各自审核通过后执行）：
+      全书终审（统一审核，沿用绿黄红模板；按分工模式执行，N>1 交子代理、主代理只给项目目录并静默等待）：
+      审核输入：核心世界观 / 人物档案 / 章节目录 / 大纲 / 全部章节正文。
+      审查重点（跨章全局）：
+      a 全书设定一致：跨章无设定 / 时间线 / 人物状态冲突
+      b 人物弧光完整：成长曲线全书连贯，无断裂或反复
+      c 伏笔全部回收：逐条核对目录/大纲登记的伏笔，未回收则补回收或删除
+      d 节奏全书平衡：松紧冷热交替合理，无拖沓章节
+      e 逻辑全书自洽：跨章因果链完整，无前后矛盾
+      审核报告落盘：全书审核结果写入 {{cwd}}/项目名/审核报告-全书.md，绝不覆盖已有报告。
+      修改：问题章节按「正文写作规则」修改（小段 edit 原位改；整章先复制 v(X+1)、旧版保留，再改副本），改后重审相关章节；全部通过才合订。
+      合订为一本书（工具流程）：glob 列出全部章节 → 按 章节目录 顺序 read 逐章读取 → write 新建 书名-全书.md 一次性写入。
+      合订结构：# 书名 | 简介(3行内) | 目录(章节+卷) | ## 第N章 章节名字 | 正文原文。
+      铁律：合订用 write 新建文件，绝不覆盖任何章节原稿；原章节文件保留不动。
+
+      === 工具使用标准（逐工具铁律） ===
+
+      read：只读不改；一次一个文件、路径完整；只读相关文件；大文件按行段读，不整卷吞入。
+      write：只创建新文件（设定首版/新章/新版本 v(X+1)）；写前确认父目录存在；一次写完整；绝不覆盖已存在文件。
+      edit：只原位小段替换、一次一处、改后复核；失败 ≥3 次转整章重写（按「正文写作规则」）；绝不整章覆盖旧稿。
+      glob：只定位文件，窄通配防海量结果；结果过多就收窄。
+      grep：只检索定位，必带检索词与目标目录，命中先看文件与行号；不全文漫游。
+      read_image：禁用，一律不用。
+      subagent/subagent_fork：按分工模式使用；任务描述自包含（背景/目标/项目目录/产出文件/边界/不得做什么），主代理只给任务与项目目录、不代查文件；绝不与子代理抢写同一文件。
+      list_agents：动笔前或怀疑卡顿时查已派代理状态。
+      send_message：只向已派代理发一次性明确指令（改哪里/产出什么），不重复发送、不闲聊。
+      interrupt_agent：仅当子代理卡死/跑偏/产出不再需要时中断，中断前先收回其已完成产出。
+      通用铁律：一次只调一个工具、等结果再调下一个；参数扁平短小；能轻则轻（能 grep 就不 read 全文件，能 edit 就不重写整章）；工具结果异常先自查再重试，同一操作连续失败不超三次。
+
+      === 项目与纪律 ===
+
+      项目规范：新项目在 {{cwd}}/项目名/ 下，含 叙事方法、核心世界观、名词索引、人物档案、大纲、章节目录、各章正文；路径英文，内容原始中文。
+      纪律：一次只做一件事；重要创作决策写入对应文件而非对话记录；N>1 时主代理派完子代理即停止回合、静默等待，不代写不代审。
+    complete: true
+    includeRuntimeContext: false
+
+# ── preset-scoped toolChoice pin ────────────────────────────────────────────
+
+# Merged from `@deepseek-ai/dsh-llm-tool-choice-pin` and kept OUT of the profile
+# packages so it applies only to THIS preset. Sets `toolChoice:'auto'` on every
+# `llama`-provider request this agent makes (keeps `edit`/`subagent`/`write`
+# callable for 小段改动 and delegation; see the vendored
+# `./plugins/llm-tool-choice-pin/index.mjs`). Publishes no service, so it sits
+# loose: it merely consumes the host `agent/request` waterfall.
+- id: tool-choice-pin
+  name: './plugins/llm-tool-choice-pin/index.mjs'
+  config:
+    providers: [llama]
+    toolChoice: auto
+
+# ── shell ───────────────────────────────────────────────────────────────────
+# Within a preset realm these never reach the model; and novel writing has no
+# shell need. Both are hard-disabled to strip their schema from the tool
+# catalog (a `toolChoice:none`/`auto` model still pays tokens for every listed
+# tool).
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  disabled: true
+
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: true
+
+# ── filesystem ──────────────────────────────────────────────────────────────
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+
+# ── background jobs ────────────────────────────────────────────────────────
+
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+  disabled: true
+
+# ── skills ──────────────────────────────────────────────────────────────────
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: true
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+  disabled: true
+
+# ── goals ───────────────────────────────────────────────────────────────────
+
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+  disabled: true
+
+# ── plan mode ───────────────────────────────────────────────────────────────
+
+- id: planning
+  name: cordis:group
+  group: true
+  isolate:
+    planMode: true
+  config:
+    - id: plan-mode
+      name: '@deepseek-ai/dsh-plan-mode'
+      disabled: true
+      config:
+        section: |
+              You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+              Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+              The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+              Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+              Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+              When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+
+# ── compaction ──────────────────────────────────────────────────────────────
+
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024
+
+# ── delegation and workflows ────────────────────────────────────────────────
+
+# The `subagents` registry and its spawn/fork backends live in the HOST
+# composition; this preset contributes the delegation TOOLS, which resolve that
+# host registry. The single writing lead uses these only occasionally for a
+# one-shot independent check or polish, never as the primary pipeline.
+- id: delegation
+  name: cordis:group
+  group: true
+  isolate:
+    workflowEngine: true
+  config:
+    - id: tool-subagent-control
+      name: '@deepseek-ai/dsh-tool-subagent-control'
+
+    - id: tool-subagent-list-agents
+      name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+
+    - id: tool-subagent
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn
+        toolName: subagent
+        backgroundMode: continuable
+
+    - id: tool-subagent-fork
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: fork
+        toolName: subagent_fork
+        backgroundMode: continuable
+
+    - id: tool-subagent-codex
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: codex
+        toolName: subagent_codex
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+    - id: tool-subagent-claude-code
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: claude-code
+        toolName: subagent_claude_code
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+    - id: workflow-worker-thread
+      name: '@deepseek-ai/dsh-workflow-worker-thread'
+      disabled: true
+      config:
+        provider: spawn
+
+    - id: tool-workflow
+      name: '@deepseek-ai/dsh-tool-workflow'
+      disabled: true
+
+    - id: tool-ralph
+      name: '@deepseek-ai/dsh-tool-ralph'
+      disabled: true
+      config:
+        subagentProvider: spawn
+        maxRounds: 64
+
+# ── remaining model-facing rows ─────────────────────────────────────────────
+
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+  disabled: true
+
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  disabled: true
+  config:
+    allowParallelInProgress: true
+
+# The `web` service and its search provider stay in the host composition; only
+# the model-facing tool is per-session. Disabled here to slim the tool catalog
+# for a quantized small model (fiction writing needs it rarely, and a weak
+# model gains schema surface + hallucination risk). Flip to `disabled: false`
+# if the deployment needs web search.
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  disabled: true
+  config:
+    fetch: false
+    searchTimeoutMs: 60000

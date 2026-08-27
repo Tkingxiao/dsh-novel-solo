@@ -1,0 +1,10 @@
+# dsh-novel-solo: dev patch overlay for the web profile.
+#
+# Usage:
+#   dsh web --patch ./cordis.yml
+#
+# Inserts the plugin into the web composition so the General-settings agent-count
+# row is available during development.
+- insert:
+    - id: dsh-novel-solo
+      name: 'dsh-novel-solo'
