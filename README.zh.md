@@ -47,7 +47,7 @@ DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能�
 
 ## 工具瘦身
 
-预设通过行级 `disabled: true` 硬禁用：`tool-bash`、`tool-pwsh`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`tool-goal`、`plan-mode`、`subagent_codex`、`subagent_claude_code`、`workflow-worker-thread`、`tool-workflow`、`tool-ralph`、`tool-ask-user`、`tool-todo`、`tool-web`。保留 `tool-fs`（read/write/edit）、`tool-fs-search`（glob/grep）、`subagent`/`subagent_fork`、`list_agents` 等。
+预设通过行级 `disabled: true` 硬禁用：`tool-bash`、`tool-pwsh`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`tool-goal`、`plan-mode`、`subagent_codex`、`subagent_claude_code`、`workflow-worker-thread`、`tool-workflow`、`tool-ralph`、`tool-todo`、`tool-web`。保留 `tool-fs`（read/write/edit）、`tool-fs-search`（glob/grep）、`str-replace-editor`（view/create/str_replace/insert）、`subagent`/`subagent_fork`、`list_agents` 等。
 
 随包还携带一个 **preset 作用域**的 vendored 插件（仅对挂载 `novel-solo` 预设的会话生效）：
 

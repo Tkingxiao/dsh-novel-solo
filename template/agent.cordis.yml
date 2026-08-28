@@ -202,6 +202,7 @@
       edit：只原位小段替换、一次一处、改后复核；失败 ≥3 次转整章重写（按「正文写作规则」）；绝不整章覆盖旧稿。
       glob：只定位文件，窄通配防海量结果；结果过多就收窄。
       grep：只检索定位，必带检索词与目录，命中先看文件与行号。
+      str_replace_editor：view 带行号查看；create 建新文件；str_replace 需唯一字面匹配、一次一处；insert 按行插入。与 read/write/edit 等效可用，edit 连续失败时换用它重试。
       read_image：硬禁用，一律不用，绝不调用。
       subagent/subagent_fork：写作按分工模式；审核（章节/全书）一律新建子代理、不受 N 限制；任务描述自包含（背景/目标/项目目录/产出文件/边界/不得做什么），主代理只给任务与目录、不代查文件；绝不与子代理抢写同一文件。
       list_agents：动笔前或怀疑卡顿时查已派代理状态。
@@ -245,6 +246,14 @@
   disabled: true
 
 # ── filesystem ──────────────────────────────────────────────────────────────
+
+# Phase-1 顶层字符串替换编辑器：复用宿主沙箱化的 `ctx.fs`，与 tool-fs 的
+# read/write/edit 并存，提供 view/create/str_replace/insert 四操作（含独立
+# edit 路径，供 edit 连续失败时换用）。
+- id: str-replace-editor
+  name: '@deepseek-ai/dsh-tool-str-replace-editor'
+  config:
+    maxOutputChars: 16000
 
 - id: tool-fs
   name: '@deepseek-ai/dsh-tool-fs'
