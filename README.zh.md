@@ -59,7 +59,7 @@ DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能�
 lib/index.js        node 半区：RPC 通道 /dsh-novel-solo（read / writeAgentCount），文件落盘、预设铺设
 lib/client.js       浏览器半区：注册 settings.general.item（id agent-count），渲染 1-12 选择器
 cordis.patch.yml    安装进 web profile 时插入本插件
-template/           novel-solo 预设（agent.cordis.yml + vendored 插件），随包分发
+template/           novel-solo 预设（agent.cordis.yml + preset.yml + vendored 插件），随包分发
 package.json        dsh.client 元数据，使插件可被插件市场/清单识别
 ```
 

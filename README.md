@@ -59,7 +59,7 @@ It also ships a **preset-scoped** vendored plugin (active only for sessions moun
 lib/index.js        node half: RPC channel /dsh-novel-solo (read / writeAgentCount), file store, preset deploy
 lib/client.js       browser half: registers settings.general.item (id agent-count), renders the 1-12 selector
 cordis.patch.yml    inserted into the web profile on install
-template/           the novel-solo preset (agent.cordis.yml + vendored plugin), shipped with the package
+template/           the novel-solo preset (agent.cordis.yml + preset.yml + vendored plugin), shipped with the package
 package.json        dsh.client metadata so the plugin is recognizable by the plugin market/manifest
 ```
 
