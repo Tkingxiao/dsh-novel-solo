@@ -47,7 +47,7 @@ DSH's `agent/request` waterfall only lets a plugin rewrite LLM routing/config â€
 
 ## Tool slimming
 
-The preset hard-disables these rows via `disabled: true`: `tool-bash`, `tool-pwsh`, `tool-jobs`, `skill-filesystem`, `tool-skill`, `tool-goal`, `plan-mode`, `subagent_codex`, `subagent_claude_code`, `workflow-worker-thread`, `tool-workflow`, `tool-ralph`, `tool-todo`, `tool-web`. It keeps `tool-fs` (read/write/edit), `tool-fs-search` (glob/grep), `str-replace-editor` (view/create/str_replace/insert), `subagent`/`subagent_fork`, `list_agents`, etc.
+The preset hard-disables these rows via `disabled: true`: `tool-bash`, `tool-jobs`, `skill-filesystem`, `tool-skill`, `tool-goal`, `plan-mode`, `subagent_codex`, `subagent_claude_code`, `workflow-worker-thread`, `tool-workflow`, `tool-ralph`, `tool-todo`, `tool-web`. It keeps `tool-fs` (read/write/edit), `tool-fs-search` (glob/grep), `str-replace-editor` (view/create/str_replace/insert), `tool-pwsh` (unlocked as a fallback when write/edit/grep fail), `subagent`/`subagent_fork`, `list_agents`, etc.
 
 It also ships a **preset-scoped** vendored plugin (active only for sessions mounting the `novel-solo` preset):
 
