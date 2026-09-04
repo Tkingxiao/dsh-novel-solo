@@ -8,7 +8,7 @@ A **single-author novel-writing plugin** for DeepSeek Harness: a **subagent conc
 - **Full creation preset**: ships the `novel-solo` preset with a self-driven persona that follows a fixed pipeline — 叙事方法 (narrative method) → 核心世界观 (core worldview) → 名词索引 (noun index) → 大纲 (outline) → 章节目录 (chapter list) → 人物档案 (character files) → chapter-by-chapter writing → per-chapter review → final whole-book review & assembly.
 - **Quantized-safe protocol**: plain CJK + common punctuation only, no JSON, no escapes, avoids fragile tokens; minimal tool calls, one at a time.
 - **Review loop**: every chapter is reviewed (green/yellow/red) across 7 dimensions (setting / character / catalog / narrative / text rules / AI-cliché / plot logic); each report is written to a markdown file; when all chapters pass, a whole-book review runs and the book is assembled.
-- **No AI clichés**: ships shared writing/review blacklists for structural tics, expression tics, emotion tics, repetition, and lazy connectors.
+- **No AI clichés**: judges AI-flavor across six dimensions (sentence templates / stock vocabulary / emotion telling / structural sameness / diluted information / character distortion), distinguishing narrator-level repetition from character-level consistency; shared by writing and review.
 - **Slimmed catalog**: hard-disables whole tool rows (shell / jobs / skills / goals / web) inside the preset to shrink the tool schema.
 - **Versioned writing**: each chapter is `第N章-章节名字-vX.md`; full-chapter rewrites first copy to v(X+1) and never overwrite older drafts.
 
