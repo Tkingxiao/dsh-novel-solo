@@ -1,8 +1,8 @@
 # dsh-novel-solo: web profile bundle patch layer.
 # When this package is installed into a profile via `dsh plugin add`, this patch
 # is applied as a layer, inserting the plugin row into the composed web
-# configuration. The plugin registers an "agent-count" item inside the General
-# settings section and persists it to ~/.dsh/.dsh-novel-solo-data/.
+# configuration. The plugin registers a settings card (subagent count) inside
+# the Settings → Plugins panel and persists it to the dsh settings store.
 - insert:
     - id: dsh-novel-solo
       name: 'dsh-novel-solo'

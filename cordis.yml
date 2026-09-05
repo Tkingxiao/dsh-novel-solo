@@ -3,8 +3,8 @@
 # Usage:
 #   dsh web --patch ./cordis.yml
 #
-# Inserts the plugin into the web composition so the General-settings agent-count
-# row is available during development.
+# Inserts the plugin into the web composition so the Settings → Plugins
+# subagent-count card is available during development.
 - insert:
     - id: dsh-novel-solo
       name: 'dsh-novel-solo'

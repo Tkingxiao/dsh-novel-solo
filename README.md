@@ -19,7 +19,7 @@ dsh plugin --profile web add "dsh-novel-solo"
 dsh web
 ```
 
-Then open Settings → General; the "Subagent count" row appears at the bottom.
+Then open Settings → Plugins; the dsh-novel-solo "Subagent count" card appears.
 
 On first launch the plugin **idempotently deploys** the preset from `template/` to `<dshHome>/.agent-presets/novel-solo/` (skips if the target already exists — it never overwrites your edited preset).
 
@@ -56,8 +56,8 @@ It also ships a **preset-scoped** vendored plugin (active only for sessions moun
 ## File structure
 
 ```
-lib/index.js        node half: RPC channel /dsh-novel-solo (read / writeAgentCount), file store, preset deploy
-lib/client.js       browser half: registers settings.general.item (id agent-count), renders the 1-12 selector
+lib/index.js        node half: registers the dsh-novel-solo settings namespace (settings service), file store + persona-anchor sync + preset deploy
+lib/client.js       browser half: registers the settings.plugin.item card (key=dsh-novel-solo), renders the 1-12 selector
 cordis.patch.yml    inserted into the web profile on install
 template/           the novel-solo preset (agent.cordis.yml + preset.yml + vendored plugin), shipped with the package
 package.json        dsh.client metadata so the plugin is recognizable by the plugin market/manifest

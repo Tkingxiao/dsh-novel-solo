@@ -4,7 +4,7 @@ DeepSeek Harness 的「单核写作」插件：一个 **子 agent 并发数量�
 
 ## 特性
 
-- **GUI 设置**：在「设置 → 通用」提供「子 agent 数量（1-12）」选择器，随插即用，支持中/英双语。
+- **GUI 设置**：在「设置 → 插件」提供「子 agent 数量（1-12）」设置卡片，随插即用，支持中/英双语。
 - **完整创作预设**：随插件附带 `novel-solo` 预设，内置自驱写作 persona——按固定流水线完成 叙事方法 → 核心世界观 → 名词索引 → 大纲 → 章节目录 → 人物档案 → 逐章写作 → 章节审核 → 全书终审与合订。
 - **量化安全协议**：输出只用常用汉字/普通标点、禁 JSON、禁转义、少用易崩 token；非必要不调工具、一次只调一个。
 - **审核闭环**：每章必审（绿黄红三色），A–G 七个维度（设定/人物性格/目录/叙事/正文规则/禁AI腔/剧情逻辑），审核报告落盘为 md；全书完成后统一终审并合订为单本书。
@@ -27,10 +27,10 @@ dsh web
 
 DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能注入或改写 `system`/`messages`，所以「GUI → 模型提示」的动态注入不能走请求瀑布。本插件改用两段式接线：
 
-1. 保存时把 `N` 写入 `~/.dsh/.dsh-novel-solo-data/agent-count.json`（唯一事实源）。
+1. 在设置卡片里保存 `N`：写入 settings.yaml 的 `dsh-novel-solo.count`（事实源），并镜像落盘 `~/.dsh/.dsh-novel-solo-data/agent-count.json`（兼容旧版读取）。
 2. 同步改写 persona 文本里的同步锚点 `并发上限 N=<数字>`（默认改写部署预设 `~/.dsh/.agent-presets/novel-solo/agent.cordis.yml`）。persona 据此决定：`N=1` 全部由主代理一人完成；`N>1` 写作/审核交给子代理、主代理只派活并静默等待。
 
-> 注意：persona 在每次启动 preset 时装载。GUI 改动是「改文件」，**已在运行的会话需重启/新会话才吃到新 N**。
+> 注意：persona 在每次启动 preset 时装载。设置卡片改动是「改文件」，**已在运行的会话需重启/新会话才吃到新 N**。
 
 ## 预设内容速览
 
@@ -56,8 +56,8 @@ DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能�
 ## 文件结构
 
 ```
-lib/index.js        node 半区：RPC 通道 /dsh-novel-solo（read / writeAgentCount），文件落盘、预设铺设
-lib/client.js       浏览器半区：注册 settings.general.item（id agent-count），渲染 1-12 选择器
+lib/index.js        node 半区：注册 dsh-novel-solo 设置命名空间（settings 服务），文件落盘 + persona 锚点同步 + 预设铺设
+lib/client.js       浏览器半区：注册 settings.plugin.item 卡片（key=dsh-novel-solo），渲染 1-12 选择器
 cordis.patch.yml    安装进 web profile 时插入本插件
 template/           novel-solo 预设（agent.cordis.yml + preset.yml + vendored 插件），随包分发
 package.json        dsh.client 元数据，使插件可被插件市场/清单识别
