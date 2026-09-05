@@ -4,7 +4,7 @@ A **single-author novel-writing plugin** for DeepSeek Harness: a **subagent conc
 
 ## Features
 
-- **GUI setting**: adds a "Subagent count (1-12)" selector under Settings → General, with built-in zh/en i18n.
+- **GUI setting**: a "Subagent count (1-12)" card under Settings → Plugins, with built-in zh/en i18n.
 - **Full creation preset**: ships the `novel-solo` preset with a self-driven persona that follows a fixed pipeline — 叙事方法 (narrative method) → 核心世界观 (core worldview) → 名词索引 (noun index) → 大纲 (outline) → 章节目录 (chapter list) → 人物档案 (character files) → chapter-by-chapter writing → per-chapter review → final whole-book review & assembly.
 - **Quantized-safe protocol**: plain CJK + common punctuation only, no JSON, no escapes, avoids fragile tokens; minimal tool calls, one at a time.
 - **Review loop**: every chapter is reviewed (green/yellow/red) across 7 dimensions (setting / character / catalog / narrative / text rules / AI-cliché / plot logic); each report is written to a markdown file; when all chapters pass, a whole-book review runs and the book is assembled.

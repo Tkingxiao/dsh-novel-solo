@@ -19,7 +19,7 @@ dsh plugin --profile web add "dsh-novel-solo"
 dsh web
 ```
 
-打开「设置 → 通用」，底部可见「子 agent 数量」。
+打开「设置 → 插件」，可见 dsh-novel-solo 的设置卡片「子 agent 数量」。
 
 首次启动时，插件会把 `template/` 里的预设**幂等铺设**到 `<dshHome>/.agent-presets/novel-solo/`（目标已存在则跳过，绝不覆盖你已编辑的预设）。
 
