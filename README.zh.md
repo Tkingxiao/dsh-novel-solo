@@ -23,6 +23,12 @@ dsh web
 
 首次启动时，插件会把 `template/` 里的预设**幂等铺设**到 `<dshHome>/.agent-presets/novel-solo/`（目标已存在则跳过，绝不覆盖你已编辑的预设）。
 
+## 宿主版本兼容性
+
+`0.1.5` 起，预设中 persona 使用 `@deepseek-ai/dsh-persona` 的新配置字段 `prefix`（0.1.2-rc.1 的旧字段 `text` 在新版已移除），因此本模板预设面向 **DSH 0.1.5-rc.2 及以后**的宿主。
+
+每个宿主 home 各持一份 `.agent-presets/novel-solo/agent.cordis.yml` 部署副本。旧宿主（如 0.1.2-rc.1）铺设的 home 继续保留其「`text:`」副本，切回仍可用；新 home 首次铺设本插件会得到「`prefix:`」模板。若要手动升级旧 home，把 persona 行字段名 `text:` 改为 `prefix:` 即可（`complete` / `includeRuntimeContext` 字段名不变）。
+
 ## 子 agent 数量如何影响行为
 
 DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能注入或改写 `system`/`messages`，所以「GUI → 模型提示」的动态注入不能走请求瀑布。本插件改用两段式接线：

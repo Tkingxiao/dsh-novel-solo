@@ -23,6 +23,12 @@ Then open Settings → Plugins; the dsh-novel-solo "Subagent count" card appears
 
 On first launch the plugin **idempotently deploys** the preset from `template/` to `<dshHome>/.agent-presets/novel-solo/` (skips if the target already exists — it never overwrites your edited preset).
 
+## Host compatibility
+
+Since `0.1.5`, the preset persona uses the `@deepseek-ai/dsh-persona` config key `prefix` (the `text` key used by 0.1.2-rc.1 was removed). This template therefore targets **DSH 0.1.5-rc.2 and later**.
+
+Each host home keeps its own `.agent-presets/novel-solo/agent.cordis.yml`. Homes provisioned by older hosts (e.g. 0.1.2-rc.1) keep their `text:` copy and still work when you switch back; a fresh home provisions the `prefix:` template. To hand-upgrade an older home, rename the persona row's `text:` to `prefix:` (the `complete` / `includeRuntimeContext` keys are unchanged).
+
 ## How the subagent count takes effect
 
 DSH's `agent/request` waterfall only lets a plugin rewrite LLM routing/config — it cannot inject or rewrite `system`/`messages` — so "GUI → model prompt" dynamic injection cannot go through the request waterfall. This plugin uses a two-stage wiring instead:
