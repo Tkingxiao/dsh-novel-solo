@@ -1,8 +1,228 @@
-# dsh-novel-solo: web profile bundle patch layer.
-# When this package is installed into a profile via `dsh plugin add`, this patch
-# is applied as a layer, inserting the plugin row into the composed web
-# configuration. The plugin registers a settings card (subagent count) inside
-# the Settings → Plugins panel and persists it to the dsh settings store.
+# dsh-novel-solo: web profile bundle patch layer（dsh 0.1.6 / 0.1.7 双模式）。
+#
+# 预设的装载契约在 0.1.7 换了实现，本文件用 `preset-novel-solo` 行的 disabled
+# 版本探测二选一（从 ctx.profileContext.installAnchor 读宿主自身版本）：
+#   - 宿主 >= 0.1.7：声明行生效——0.1.7 起 <dshHome>/.agent-presets/ 目录扫描已
+#     删除，预设的唯一契约就是往 composition 插一行 @deepseek-ai/dsh-agent-preset；
+#     用户在 Web 预设编辑器里的保存会按行 id 覆盖本行的 config.plugins。
+#   - 宿主 < 0.1.7（或探测失败）：声明行禁用（0.1.6 没有该包，但 disabled 行先于
+#     名称解析被过滤，不会因缺包致命），改由 node 半区把 template/ 幂等铺设到
+#     <dshHome>/.agent-presets/novel-solo/。
+# `dsh-novel-solo` 行两端都启用且无需配置：它自己按宿主版本决定铺旧目录还是只
+# 镜像数量。disabled 表达式绝不许抛错（抛错 = 该行初始化失败），一律 try/catch
+# 兜底在「旧路径」上，保证任何宿主至少有一条预设路径生效。
+#
+# persona 正文不在本文件里：两个宿主都由 persona 行的 !!js 表达式读 persona.md
+# 并把设置里并发上限的数字替换进「并发上限 N=<数字>」锚点（0.1.7 已没有可改写
+# 的部署文件）。预设装载时读取，改数量后需重启宿主生效。
 - insert:
     - id: dsh-novel-solo
       name: 'dsh-novel-solo'
+
+    - id: preset-novel-solo
+      name: '@deepseek-ai/dsh-agent-preset'
+      # 宿主 < 0.1.7（含探测失败）时禁用本行，走上面的铺设路径。
+      disabled: !!js |-
+        (() => {
+          try {
+            const m = JSON.parse(process.getBuiltinModule('node:fs').readFileSync(ctx.profileContext.installAnchor, 'utf8')).version.match(/^(\d+)\.(\d+)\.(\d+)/)
+            return !(+m[1] > 0 || (+m[1] === 0 && (+m[2] > 1 || (+m[2] === 1 && +m[3] >= 7))))
+          } catch { return true }
+        })()
+      config:
+        id: novel-solo
+        name: 单核写作主理
+        description: 量化安全单核小说创作预设：单代理依序落盘叙事方法/世界观/名词索引/大纲/章节目录/人物档案/各章正文，章节与全书由独立子代理绿黄红审核，str_replace_editor 优先小改与 v(X+1) 版本管理。
+        # 出厂预设为 standard=1 / ptc=2 / minimal=3 / cordis=4，第三方取 5。
+        order: 5
+        # ==== 生成区起点：node scripts/sync-preset-patch.mjs 从 template/agent.cordis.yml 同步，勿手改 ====
+        plugins:
+          # The `novel-solo` agent preset (quantization-robust single-author novel studio)
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js |-
+                (() => {
+                  const fail = 'novel-solo 预设装载失败：未读到包内 persona.md。本次没有写作规范与审核流程，请重新安装 dsh-novel-solo 插件。'
+                  try {
+                    const fs = process.getBuiltinModule('node:fs'), path = process.getBuiltinModule('node:path')
+                    const url = process.getBuiltinModule('node:url'), mod = process.getBuiltinModule('node:module')
+                    // 两个宿主给出的解析基准不同：0.1.6 是本预设所在的部署目录，0.1.7 是
+                    // profile 目录（不含包内资源），所以再按包名找到已安装的本包根目录。
+                    const roots = []
+                    try { roots.push(url.fileURLToPath(ctx.baseUrl)) } catch {}
+                    try { roots.push(path.dirname(mod.createRequire(ctx.baseUrl).resolve('dsh-novel-solo/package.json'))) } catch {}
+                    let text
+                    for (const root of roots) {
+                      for (const rel of ['persona.md', path.join('template', 'persona.md')]) {
+                        try { text = fs.readFileSync(path.join(root, rel), 'utf8') } catch {}
+                        if (text) break
+                      }
+                      if (text) break
+                    }
+                    if (!text) return fail
+                    // 数量真源是宿主设置；node 半区把它镜像成 JSON，预设装载时同步读回。
+                    try {
+                      const os = process.getBuiltinModule('node:os')
+                      const env = (process.env.DSH_HOME || '').trim()
+                      const home = (ctx.profileContext && ctx.profileContext.home)
+                        || (env ? path.resolve(env.replace(/^~(?=$|[\\/])/, os.homedir())) : path.join(os.homedir(), '.dsh'))
+                      const n = +JSON.parse(fs.readFileSync(path.join(home, '.dsh-novel-solo-data', 'agent-count.json'), 'utf8')).count
+                      if (Number.isInteger(n) && n >= 1 && n <= 12) text = text.replace(/(并发上限\s*N=)\d+/, '$1' + n)
+                    } catch {}
+                    return text
+                  } catch { return fail }
+                })()
+              complete: true
+              includeRuntimeContext: false
+
+          # ── preset-scoped toolChoice pin ────────────────────────────────────────────
+          - id: tool-choice-pin
+            name: 'dsh-novel-solo/plugins'
+            config:
+              providers: [llama]
+              toolChoice: auto
+
+          # ── shell ───────────────────────────────────────────────────────────────────
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: true
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: false
+
+          # ── filesystem ──────────────────────────────────────────────────────────────
+          # str_replace_editor（最高优先）：所有 编辑/创建/替换 首选，read/write/edit 为失效备选；pwsh 仅做文件系统管理（改名/删除），不参与正文编辑。
+          - id: str-replace-editor
+            name: '@deepseek-ai/dsh-tool-str-replace-editor'
+            config:
+              maxOutputChars: 16000
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+
+          # ── background jobs ────────────────────────────────────────────────────────
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+            disabled: true
+
+          # ── skills ──────────────────────────────────────────────────────────────────
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            disabled: true
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+            disabled: true
+
+          # ── goals ───────────────────────────────────────────────────────────────────
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+            disabled: true
+
+          # ── plan mode ───────────────────────────────────────────────────────────────
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                disabled: true
+                config:
+                  section: |
+                        You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement approves nothing and does not end plan mode. Explore first with non-mutating reads. Do not edit or write files. Prefer existing functions and patterns. Use ask_user_question only for user-owned choices or material ambiguity. Make the plan decision-complete. When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make it the only and final tool call in that assistant response. Do not paste the final plan as a plain reply. If review rejects it, incorporate the feedback and present again.
+
+          # ── compaction ──────────────────────────────────────────────────────────────
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+          # ── delegation and workflows ────────────────────────────────────────────────
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  backgroundMode: continuable
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+                  backgroundMode: continuable
+              - id: tool-subagent-codex
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: codex
+                  toolName: subagent_codex
+                  enableRunInBackground: false
+                  maxDepth: provider-managed
+              - id: tool-subagent-claude-code
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: claude-code
+                  toolName: subagent_claude_code
+                  enableRunInBackground: false
+                  maxDepth: provider-managed
+              - id: workflow-worker-thread
+                name: '@deepseek-ai/dsh-workflow-worker-thread'
+                disabled: true
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+                disabled: true
+              - id: tool-ralph
+                name: '@deepseek-ai/dsh-tool-ralph'
+                disabled: true
+                config:
+                  subagentProvider: spawn
+                  maxRounds: 64
+
+          # ── remaining model-facing rows ─────────────────────────────────────────────
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            disabled: true
+            config:
+              allowParallelInProgress: true
+
+          # web tool disabled to slim catalog for quantized models
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            disabled: true
+            config:
+              fetch: false
+              searchTimeoutMs: 60000
+        # ==== 生成区终点 ====

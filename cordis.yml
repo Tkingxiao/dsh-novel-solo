@@ -1,10 +1,12 @@
 # dsh-novel-solo: dev patch overlay for the web profile.
 #
 # Usage:
-#   dsh web --patch ./cordis.yml
+#   dsh web --patch ./cordis.yml          # 只要子 agent 数量卡片（0.1.7 左侧栏「插件」/ 0.1.6「设置 → 插件」）
+#   dsh web --patch ./cordis.patch.yml    # 卡片 + novel-solo 预设（安装态走这条）
 #
-# Inserts the plugin into the web composition so the Settings → Plugins
-# subagent-count card is available during development.
+# 本文件只插 node 半区这一行，不带 novel-solo 预设声明行，所以 0.1.7 宿主上不会
+# 出现预设；0.1.6 宿主仍会按版本探测铺设 .agent-presets/（要关掉用
+# DSH_NOVEL_SKIP_DEPLOY=1）。需要预设请用 cordis.patch.yml。
 - insert:
     - id: dsh-novel-solo
       name: 'dsh-novel-solo'

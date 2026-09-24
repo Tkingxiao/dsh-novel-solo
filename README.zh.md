@@ -4,7 +4,7 @@ DeepSeek Harness 的「单核写作」插件：一个 **子 agent 并发数量�
 
 ## 特性
 
-- **GUI 设置**：在「设置 → 插件」提供「子 agent 数量（1-12）」设置卡片，随插即用，支持中/英双语。
+- **GUI 设置**：在插件页提供「子 agent 数量（1-12）」设置卡片（0.1.7 在左侧栏「插件」，0.1.6 在「设置 → 插件」），随插即用，支持中/英双语。
 - **完整创作预设**：随插件附带 `novel-solo` 预设，内置自驱写作 persona——按固定流水线完成 叙事方法 → 核心世界观 → 名词索引 → 大纲 → 章节目录 → 人物档案 → 逐章写作 → 章节审核 → 全书终审与合订。
 - **量化安全协议**：输出只用常用汉字/普通标点、禁 JSON、禁转义、少用易崩 token；非必要不调工具、一次只调一个。
 - **审核闭环**：每章必审（绿黄红三色），A–G 七个维度（设定/人物性格/目录/叙事/正文规则/禁AI腔/剧情逻辑），审核报告落盘为 md；全书完成后统一终审并合订为单本书。
@@ -19,28 +19,37 @@ dsh plugin --profile web add "dsh-novel-solo"
 dsh web
 ```
 
-打开「设置 → 插件」，可见 dsh-novel-solo 的设置卡片「子 agent 数量」。
+打开插件页——0.1.7 是左侧栏的「插件」，0.1.6 是「设置 → 插件」——即可看到 dsh-novel-solo 的「子 agent 数量」卡片。
 
-首次启动时，插件会把 `template/` 里的预设**幂等铺设**到 `<dshHome>/.agent-presets/novel-solo/`（目标已存在则跳过，绝不覆盖你已编辑的预设）。
+0.1.7 之前的宿主还会把 `template/` 里的预设**幂等铺设**到 `<dshHome>/.agent-presets/novel-solo/`（那是旧宿主唯一的预设入口；目标已存在则跳过，绝不覆盖你已编辑的预设）。0.1.7 起不再铺设，预设就是 profile patch 里的一行声明。
 
 ## 宿主版本兼容性
 
-`0.1.5` 起，预设中 persona 使用 `@deepseek-ai/dsh-persona` 的新配置字段 `prefix`（0.1.2-rc.1 的旧字段 `text` 在新版已移除），因此本模板预设面向 **DSH 0.1.5-rc.2 及以后**的宿主。
+本插件同时支持 **DSH 0.1.6 与 0.1.7**，按宿主自身版本二选一走哪条路。版本探测由两半各做一次、口径一致：`cordis.patch.yml` 里 `preset-novel-solo` 行的 `disabled: !!js`，以及 `lib/index.js` 的 `isLegacyHost`，都从 `ctx.profileContext.installAnchor` 读宿主版本，读不出来一律退回 0.1.6 路径。
 
-每个宿主 home 各持一份 `.agent-presets/novel-solo/agent.cordis.yml` 部署副本。旧宿主（如 0.1.2-rc.1）铺设的 home 继续保留其「`text:`」副本，切回仍可用；新 home 首次铺设本插件会得到「`prefix:`」模板。若要手动升级旧 home，把 persona 行字段名 `text:` 改为 `prefix:` 即可（`complete` / `includeRuntimeContext` 字段名不变）。
+| | 0.1.6 | 0.1.7 |
+|---|---|---|
+| 预设交付 | 铺设 `template/` 到 `<dshHome>/.agent-presets/novel-solo/` | patch 里的声明行 `@deepseek-ai/dsh-agent-preset` |
+| `N` 存哪里 | 插件自己向 settings 服务注册的 `dsh-novel-solo` 命名空间 | 本包的 `Config`（`count` 标了 `volatile`），由宿主投影进 profile patch |
+| 卡片挂载 | `settingsScope` + `settings.plugin.item` 插槽 | `configForms` + `plugins.item` 插槽 |
+
+两条路都在真宿主上跑过：0.1.7 一侧用 `0.1.7-rc.1` 验证（卡片出现在「插件」页、保存落进 `cordis.patch.yml`、预设进入选择器）；0.1.6 一侧因为本机没有 0.1.6 的宿主可执行文件，只做了同一版本门控的离线验证。
+
+`0.1.5` 起 persona 使用 `@deepseek-ai/dsh-persona` 的新配置字段 `prefix`（0.1.2-rc.1 的旧字段 `text` 已移除），更老的宿主需要手工把 persona 行的 `text:` 改名成 `prefix:`（`complete` / `includeRuntimeContext` 不变）。每个宿主 home 各持一份铺设副本，旧 home 的 `text:` 副本切回旧宿主仍可用。
 
 ## 子 agent 数量如何影响行为
 
-DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能注入或改写 `system`/`messages`，所以「GUI → 模型提示」的动态注入不能走请求瀑布。本插件改用两段式接线：
+DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能注入或改写 `system`/`messages`，所以「GUI → 模型提示」的动态注入不能走请求瀑布。本插件改用文件中转：
 
-1. 在设置卡片里保存 `N`：写入 settings.yaml 的 `dsh-novel-solo.count`（事实源），并镜像落盘 `~/.dsh/.dsh-novel-solo-data/agent-count.json`（兼容旧版读取）。
-2. 同步改写 persona 文本里的同步锚点 `并发上限 N=<数字>`（默认改写部署预设 `~/.dsh/.agent-presets/novel-solo/agent.cordis.yml`）。persona 据此决定：`N=1` 全部由主代理一人完成；`N>1` 写作/审核交给子代理、主代理只派活并静默等待。
+1. 设置卡片把 `N` 存进宿主设置（见上表），那里才是事实源。
+2. 装载时 node 半区把它镜像到 `<dshHome>/.dsh-novel-solo-data/agent-count.json`。
+3. persona 行在预设装载时用 `!!js` 读 `template/persona.md`，把文件里的同步锚点 `并发上限 N=<数字>` 换成镜像里的数字。persona 据此决定：`N=1` 全部由主代理一人完成；`N>1` 写作/审核交给子代理、主代理只派活并静默等待。
 
-> 注意：persona 在每次启动 preset 时装载。设置卡片改动是「改文件」，**已在运行的会话需重启/新会话才吃到新 N**。
+> 注意：镜像和 persona 都是在宿主装载插件的过程中解析的，所以**改完数量要重启宿主才会进到提示词**。0.1.7 的 volatile 设置在 node 侧没有变更回调，实时推送做不了。
 
 ## 预设内容速览
 
-`template/agent.cordis.yml`（部署到 `~/.dsh/.agent-presets/novel-solo/agent.cordis.yml`）内置：
+persona 正文在 `template/persona.md`；`template/agent.cordis.yml`（同步进 `cordis.patch.yml`）负责它周围的工具行。内容：
 
 | 区块 | 内容 |
 |---|---|
@@ -57,26 +66,28 @@ DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能�
 
 随包还携带一个 **preset 作用域**的 vendored 插件（仅对挂载 `novel-solo` 预设的会话生效）：
 
-- `template/plugins/llm-tool-choice-pin/index.mjs` — 把 `llama` provider 的 `toolChoice` 钉为 `auto`，让 `edit` 等保留工具可被调用（小模型下避免每次请求都做工具决策）。
+- `template/plugins/llm-tool-choice-pin/index.mjs`（出口名 `dsh-novel-solo/plugins`）— 把 `llama` provider 的 `toolChoice` 钉为 `auto`，让 `edit` 等保留工具可被调用（小模型下避免每次请求都做工具决策）。
 
 ## 文件结构
 
 ```
-lib/index.js        node 半区：注册 dsh-novel-solo 设置命名空间（settings 服务），文件落盘 + persona 锚点同步 + 预设铺设
-lib/client.js       浏览器半区：注册 settings.plugin.item 卡片（key=dsh-novel-solo），渲染 1-12 选择器
-cordis.patch.yml    安装进 web profile 时插入本插件
-template/           novel-solo 预设（agent.cordis.yml + preset.yml + vendored 插件），随包分发
-package.json        dsh.client 元数据，使插件可被插件市场/清单识别
+lib/index.js        node 半区：宿主版本探测、数量镜像、设置接缝（0.1.7 volatile Config 表单 / 0.1.6 命名空间）、旧宿主预设铺设
+lib/client.js       浏览器半区：「子 agent 数量」卡片，分别挂到 plugins.item（0.1.7）与 settings.plugin.item（0.1.6）
+cordis.patch.yml    安装进 web profile 的层：插件行 + 声明式 novel-solo 预设行（0.1.7 以下禁用该行）
+cordis.yml          开发用 overlay：只插插件行、不带预设
+template/           novel-solo 预设（agent.cordis.yml + persona.md + preset.yml + vendored 插件），随包分发
+scripts/sync-preset-patch.mjs  把 template/agent.cordis.yml 同步进 patch 的生成区，`--check` 校验一致性
+package.json        dsh.bundle / dsh.client 元数据，使插件可被插件市场/清单识别
 ```
+
+`npm run check` 会语法检查两半区，并重跑上面的 patch/模板一致性校验。
 
 ## 环境变量
 
 | 变量 | 作用 | 默认 |
 |---|---|---|
 | `DSH_HOME` | dsh 根目录 | `~/.dsh` |
-| `DSH_NOVEL_PERSONA_YAML` | 并发锚点改写的目标 YAML（可指向任意预设） | `<dshHome>/.agent-presets/novel-solo/agent.cordis.yml` |
-| `DSH_NOVEL_PERSONA_MD` | 额外同步的 persona md 文件（可选，设了才同步） | 无 |
-| `DSH_NOVEL_SKIP_DEPLOY` | `1` 时跳过预设铺设 | 无 |
+| `DSH_NOVEL_SKIP_DEPLOY` | `1` 时跳过预设铺设（只影响旧宿主路径） | 无 |
 | `DSH_NOVEL_REDEPLOY` | `1` 时强制覆盖已存在的预设（慎用） | 无 |
 
 ## 特殊说明

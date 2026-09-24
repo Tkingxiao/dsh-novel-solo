@@ -4,7 +4,7 @@ A **single-author novel-writing plugin** for DeepSeek Harness: a **subagent conc
 
 ## Features
 
-- **GUI setting**: a "Subagent count (1-12)" card under Settings → Plugins, with built-in zh/en i18n.
+- **GUI setting**: a "Subagent count (1-12)" card on the plugin page (0.1.7: left rail → Plugins; 0.1.6: Settings → Plugins), with built-in zh/en i18n.
 - **Full creation preset**: ships the `novel-solo` preset with a self-driven persona that follows a fixed pipeline — 叙事方法 (narrative method) → 核心世界观 (core worldview) → 名词索引 (noun index) → 大纲 (outline) → 章节目录 (chapter list) → 人物档案 (character files) → chapter-by-chapter writing → per-chapter review → final whole-book review & assembly.
 - **Quantized-safe protocol**: plain CJK + common punctuation only, no JSON, no escapes, avoids fragile tokens; minimal tool calls, one at a time.
 - **Review loop**: every chapter is reviewed (green/yellow/red) across 7 dimensions (setting / character / catalog / narrative / text rules / AI-cliché / plot logic); each report is written to a markdown file; when all chapters pass, a whole-book review runs and the book is assembled.
@@ -19,28 +19,37 @@ dsh plugin --profile web add "dsh-novel-solo"
 dsh web
 ```
 
-Then open Settings → Plugins; the dsh-novel-solo "Subagent count" card appears.
+Then open the plugin page — **Plugins** in the left rail on 0.1.7, **Settings → Plugins** on 0.1.6 — and the dsh-novel-solo "Subagent count" card appears.
 
-On first launch the plugin **idempotently deploys** the preset from `template/` to `<dshHome>/.agent-presets/novel-solo/` (skips if the target already exists — it never overwrites your edited preset).
+On hosts older than 0.1.7 the plugin additionally **deploys the preset idempotently** from `template/` to `<dshHome>/.agent-presets/novel-solo/`, because that was the only preset contract there (an existing target is skipped — your edited preset is never overwritten). On 0.1.7 nothing is deployed: the preset arrives as a declarative row in the profile patch.
 
 ## Host compatibility
 
-Since `0.1.5`, the preset persona uses the `@deepseek-ai/dsh-persona` config key `prefix` (the `text` key used by 0.1.2-rc.1 was removed). This template therefore targets **DSH 0.1.5-rc.2 and later**.
+The plugin supports **DSH 0.1.6 and 0.1.7** and picks its route per host. Both halves probe the host's own version through `ctx.profileContext.installAnchor` — the YAML `disabled:` gate in `cordis.patch.yml` and the same check in `lib/index.js` — and fall back to the 0.1.6 route whenever the version cannot be read:
 
-Each host home keeps its own `.agent-presets/novel-solo/agent.cordis.yml`. Homes provisioned by older hosts (e.g. 0.1.2-rc.1) keep their `text:` copy and still work when you switch back; a fresh home provisions the `prefix:` template. To hand-upgrade an older home, rename the persona row's `text:` to `prefix:` (the `complete` / `includeRuntimeContext` keys are unchanged).
+| | 0.1.6 | 0.1.7 |
+|---|---|---|
+| Preset delivery | deploy `template/` into `<dshHome>/.agent-presets/novel-solo/` | declarative `@deepseek-ai/dsh-agent-preset` row in the patch |
+| Where `N` is saved | `dsh-novel-solo` settings namespace the plugin registers | the plugin's own `Config` (`count` is `volatile`), projected into the profile patch |
+| Card slot | `settings.plugin.item` via `settingsScope` | `plugins.item` via `configForms` |
+
+Both routes are exercised against a real host; the 0.1.7 one on `0.1.7-rc.1` (card renders on the Plugins page, saves land in `cordis.patch.yml`, preset shows up in the picker). The 0.1.6 route is covered by the same version gate offline, since no 0.1.6 host binary is installed next to the 0.1.7 one.
+
+Since `0.1.5`, the persona uses the `@deepseek-ai/dsh-persona` config key `prefix` (the `text` key of 0.1.2-rc.1 was removed), so hosts older than that need the persona row renamed by hand. Each home keeps its own deployed copy; homes provisioned by older hosts keep their `text:` copy and still work when you switch back.
 
 ## How the subagent count takes effect
 
-DSH's `agent/request` waterfall only lets a plugin rewrite LLM routing/config — it cannot inject or rewrite `system`/`messages` — so "GUI → model prompt" dynamic injection cannot go through the request waterfall. This plugin uses a two-stage wiring instead:
+DSH's `agent/request` waterfall only lets a plugin rewrite LLM routing/config — it cannot inject or rewrite `system`/`messages` — so "GUI → model prompt" dynamic injection cannot go through the request waterfall. This plugin wires the value through files instead:
 
-1. On save, `N` is written to `~/.dsh/.dsh-novel-solo-data/agent-count.json` (the single source of truth).
-2. The persona's sync anchor `并发上限 N=<number>` is rewritten in place (by default in the deployed preset `~/.dsh/.agent-presets/novel-solo/agent.cordis.yml`). The persona then decides: `N=1` the main agent does everything itself; `N>1` writing/review tasks are delegated to subagents while the main agent only dispatches and silently waits.
+1. The card saves `N` into the host's settings store (see the table above). That is the source of truth.
+2. On load, the node half mirrors it to `<dshHome>/.dsh-novel-solo-data/agent-count.json`.
+3. The persona row resolves `!!js` while the preset loads: it reads `template/persona.md` and replaces that file's `并发上限 N=<number>` anchor with the mirrored number. The persona then decides: `N=1` the main agent does everything itself; `N>1` writing/review tasks are delegated to subagents while the main agent only dispatches and silently waits.
 
-> Note: the persona is loaded each time a preset session starts. A GUI change edits files, so **running sessions pick up the new N only after a restart / new session**.
+> Note: the mirror and the persona are both resolved while the host loads its plugins, so **a GUI change reaches the prompt only after a host restart**. Volatile settings give the node side no change callback, so there is nothing to push the new value out live.
 
 ## Preset at a glance
 
-`template/agent.cordis.yml` (deployed to `~/.dsh/.agent-presets/novel-solo/agent.cordis.yml`) includes:
+The persona body lives in `template/persona.md`; `template/agent.cordis.yml` (mirrored into `cordis.patch.yml`) carries the tool rows around it. Content:
 
 | Section | Content |
 |---|---|
@@ -57,26 +66,28 @@ The preset hard-disables these rows via `disabled: true`: `tool-bash`, `tool-job
 
 It also ships a **preset-scoped** vendored plugin (active only for sessions mounting the `novel-solo` preset):
 
-- `template/plugins/llm-tool-choice-pin/index.mjs` — pins `toolChoice` to `auto` for the `llama` provider so retained tools like `edit` stay callable (avoids per-request tool decisions under small models).
+- `template/plugins/llm-tool-choice-pin/index.mjs`, exported as `dsh-novel-solo/plugins` — pins `toolChoice` to `auto` for the `llama` provider so retained tools like `edit` stay callable (avoids per-request tool decisions under small models).
 
 ## File structure
 
 ```
-lib/index.js        node half: registers the dsh-novel-solo settings namespace (settings service), file store + persona-anchor sync + preset deploy
-lib/client.js       browser half: registers the settings.plugin.item card (key=dsh-novel-solo), renders the 1-12 selector
-cordis.patch.yml    inserted into the web profile on install
-template/           the novel-solo preset (agent.cordis.yml + preset.yml + vendored plugin), shipped with the package
-package.json        dsh.client metadata so the plugin is recognizable by the plugin market/manifest
+lib/index.js        node half: host version gate, count mirror, settings seam (0.1.7 volatile `Config` form / 0.1.6 namespace), preset deploy on legacy hosts
+lib/client.js       browser half: the "Subagent count" card, mounted on `plugins.item` (0.1.7) and `settings.plugin.item` (0.1.6)
+cordis.patch.yml    installed into the web profile: the plugin row plus the declarative novel-solo preset row (disabled below 0.1.7)
+cordis.yml          development overlay: card only, no preset rows
+template/           the novel-solo preset (agent.cordis.yml + persona.md + preset.yml + vendored plugin), shipped with the package
+scripts/sync-preset-patch.mjs  copies template/agent.cordis.yml into the patch's generated block; `--check` verifies it
+package.json        dsh.bundle / dsh.client metadata so the plugin is recognizable by the plugin market/manifest
 ```
+
+`npm run check` syntax-checks both halves and re-runs the patch/template consistency check.
 
 ## Environment variables
 
 | Variable | Purpose | Default |
 |---|---|---|
 | `DSH_HOME` | dsh home directory | `~/.dsh` |
-| `DSH_NOVEL_PERSONA_YAML` | target YAML for the concurrency-anchor rewrite (can point to any preset) | `<dshHome>/.agent-presets/novel-solo/agent.cordis.yml` |
-| `DSH_NOVEL_PERSONA_MD` | extra persona md file to also sync (optional) | none |
-| `DSH_NOVEL_SKIP_DEPLOY` | `1` skips preset deployment | none |
+| `DSH_NOVEL_SKIP_DEPLOY` | `1` skips preset deployment (legacy hosts only) | none |
 | `DSH_NOVEL_REDEPLOY` | `1` forcibly overwrites an existing preset (use with care) | none |
 
 ## Test environment

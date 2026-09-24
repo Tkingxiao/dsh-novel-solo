@@ -1,2 +1,7 @@
+# 依赖与锁文件
 node_modules/
 package-lock.json
+
+# 本机专用脚本 / 适配过程笔记（既不入库也不发布）
+revire.bat
+ADAPTING-dsh-0.1.7.md
