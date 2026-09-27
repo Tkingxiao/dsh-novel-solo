@@ -1,5 +1,5 @@
 # The `novel-solo` agent preset (quantization-robust single-author novel studio)
-- id: persona
+- id: novel-solo-persona
   name: '@deepseek-ai/dsh-persona'
   config:
     prefix: !!js |-
@@ -38,59 +38,59 @@
     includeRuntimeContext: false
 
 # ── preset-scoped toolChoice pin ────────────────────────────────────────────
-- id: tool-choice-pin
+- id: novel-solo-tool-choice-pin
   name: './plugins/llm-tool-choice-pin/index.mjs'
   config:
     providers: [llama]
     toolChoice: auto
 
 # ── shell ───────────────────────────────────────────────────────────────────
-- id: tool-bash
+- id: novel-solo-tool-bash
   name: '@deepseek-ai/dsh-tool-bash'
   disabled: true
-- id: tool-pwsh
+- id: novel-solo-tool-pwsh
   name: '@deepseek-ai/dsh-tool-pwsh'
   disabled: false
 
 # ── filesystem ──────────────────────────────────────────────────────────────
 # str_replace_editor（最高优先）：所有 编辑/创建/替换 首选，read/write/edit 为失效备选；pwsh 仅做文件系统管理（改名/删除），不参与正文编辑。
-- id: str-replace-editor
+- id: novel-solo-str-replace-editor
   name: '@deepseek-ai/dsh-tool-str-replace-editor'
   config:
     maxOutputChars: 16000
-- id: tool-fs
+- id: novel-solo-tool-fs
   name: '@deepseek-ai/dsh-tool-fs'
-- id: tool-fs-search
+- id: novel-solo-tool-fs-search
   name: '@deepseek-ai/dsh-tool-fs-search'
   config:
     sampleOverCapGlobResults: false
 
 # ── background jobs ────────────────────────────────────────────────────────
-- id: tool-jobs
+- id: novel-solo-tool-jobs
   name: '@deepseek-ai/dsh-tool-jobs'
   disabled: true
 
 # ── skills ──────────────────────────────────────────────────────────────────
-- id: skill-filesystem
+- id: novel-solo-skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
   disabled: true
-- id: tool-skill
+- id: novel-solo-tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
   disabled: true
 
 # ── goals ───────────────────────────────────────────────────────────────────
-- id: tool-goal
+- id: novel-solo-tool-goal
   name: '@deepseek-ai/dsh-tool-goal'
   disabled: true
 
 # ── plan mode ───────────────────────────────────────────────────────────────
-- id: planning
+- id: novel-solo-planning
   name: cordis:group
   group: true
   isolate:
     planMode: true
   config:
-    - id: plan-mode
+    - id: novel-solo-plan-mode
       name: '@deepseek-ai/dsh-plan-mode'
       disabled: true
       config:
@@ -98,18 +98,18 @@
               You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement approves nothing and does not end plan mode. Explore first with non-mutating reads. Do not edit or write files. Prefer existing functions and patterns. Use ask_user_question only for user-owned choices or material ambiguity. Make the plan decision-complete. When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make it the only and final tool call in that assistant response. Do not paste the final plan as a plain reply. If review rejects it, incorporate the feedback and present again.
 
 # ── compaction ──────────────────────────────────────────────────────────────
-- id: compaction
+- id: novel-solo-compaction
   name: cordis:group
   group: true
   isolate:
     compaction: true
     toolResultPruner: true
   config:
-    - id: compaction-basic
+    - id: novel-solo-compaction-basic
       name: '@deepseek-ai/dsh-compaction-basic'
-    - id: command-compact
+    - id: novel-solo-command-compact
       name: '@deepseek-ai/dsh-command-compact'
-    - id: tool-result-pruner
+    - id: novel-solo-tool-result-pruner
       name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
       config:
         thresholdChars: 8192
@@ -117,29 +117,29 @@
         tailChars: 1024
 
 # ── delegation and workflows ────────────────────────────────────────────────
-- id: delegation
+- id: novel-solo-delegation
   name: cordis:group
   group: true
   isolate:
     workflowEngine: true
   config:
-    - id: tool-subagent-control
+    - id: novel-solo-tool-subagent-control
       name: '@deepseek-ai/dsh-tool-subagent-control'
-    - id: tool-subagent-list-agents
+    - id: novel-solo-tool-subagent-list-agents
       name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
-    - id: tool-subagent
+    - id: novel-solo-tool-subagent
       name: '@deepseek-ai/dsh-tool-subagent'
       config:
         provider: spawn
         toolName: subagent
         backgroundMode: continuable
-    - id: tool-subagent-fork
+    - id: novel-solo-tool-subagent-fork
       name: '@deepseek-ai/dsh-tool-subagent'
       config:
         provider: fork
         toolName: subagent_fork
         backgroundMode: continuable
-    - id: tool-subagent-codex
+    - id: novel-solo-tool-subagent-codex
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: true
       config:
@@ -147,7 +147,7 @@
         toolName: subagent_codex
         enableRunInBackground: false
         maxDepth: provider-managed
-    - id: tool-subagent-claude-code
+    - id: novel-solo-tool-subagent-claude-code
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: true
       config:
@@ -155,15 +155,15 @@
         toolName: subagent_claude_code
         enableRunInBackground: false
         maxDepth: provider-managed
-    - id: workflow-worker-thread
+    - id: novel-solo-workflow-worker-thread
       name: '@deepseek-ai/dsh-workflow-worker-thread'
       disabled: true
       config:
         provider: spawn
-    - id: tool-workflow
+    - id: novel-solo-tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'
       disabled: true
-    - id: tool-ralph
+    - id: novel-solo-tool-ralph
       name: '@deepseek-ai/dsh-tool-ralph'
       disabled: true
       config:
@@ -171,16 +171,16 @@
         maxRounds: 64
 
 # ── remaining model-facing rows ─────────────────────────────────────────────
-- id: tool-ask-user
+- id: novel-solo-tool-ask-user
   name: '@deepseek-ai/dsh-tool-ask-user'
-- id: tool-todo
+- id: novel-solo-tool-todo
   name: '@deepseek-ai/dsh-tool-todo'
   disabled: true
   config:
     allowParallelInProgress: true
 
 # web tool disabled to slim catalog for quantized models
-- id: tool-web
+- id: novel-solo-tool-web
   name: '@deepseek-ai/dsh-tool-web'
   disabled: true
   config:
