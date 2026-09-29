@@ -1,6 +1,6 @@
 {
   "name": "dsh-novel-solo",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "novel-solo helper for DeepSeek Harness: a subagent-count setting (1-12) card on the plugin page, saved into the host settings, mirrored to disk and consumed by the novel-solo preset to cap parallel subagent fan-out.",
   "keywords": [
     "deepseek-harness",
@@ -13,7 +13,7 @@
   "license": "MIT",
   "author": "Tkingxiao",
   "engines": {
-    "dsh": "0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.6 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || >=0.1.7-alpha.1 <=0.1.8-rc.1"
+    "dsh": "0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || >=0.1.7-alpha.1 <0.2.0-alpha.0"
   },
   "homepage": "https://github.com/Tkingxiao/dsh-novel-solo#readme",
   "repository": {
@@ -47,7 +47,7 @@
     "check": "node --check lib/index.js && node --check lib/client.js && node scripts/sync-preset-patch.mjs --check"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-locale": "0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || >=0.1.7-alpha.1 <0.2.0-alpha.0",
     "@deepseek-ai/schemastery": "^3.18.2",
     "react": "^18.2.0"
   },
