@@ -1,6 +1,6 @@
 {
   "name": "dsh-novel-solo",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "description": "novel-solo helper for DeepSeek Harness: a subagent-count setting (1-12) card on the plugin page, saved into the host settings, mirrored to disk and consumed by the novel-solo preset to cap parallel subagent fan-out.",
   "keywords": [
     "deepseek-harness",
