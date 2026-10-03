@@ -25,7 +25,7 @@ dsh web
 
 ## 宿主版本兼容性
 
-本插件支持 **DSH 0.1.6 一直到 0.2.0-rc.1**，按宿主自身版本二选一走哪条路。版本探测由两半各做一次、口径一致：`cordis.patch.yml` 里 `preset-novel-solo` 行的 `disabled: !!js`，以及 `lib/index.js` 的 `isLegacyHost`，都从 `ctx.profileContext.installAnchor` 读宿主版本，读不出来一律退回 0.1.6 路径。0.1.7 及以后的宿主（含 0.2.0）走同一条路。
+本插件支持 **DSH `0.1.6-alpha.1` / `0.1.6-alpha.2`，以及 `0.1.7-alpha.1` 起往后的每一个宿主版本**，按宿主自身版本二选一走哪条路。版本探测由两半各做一次、口径一致：`cordis.patch.yml` 里 `preset-novel-solo` 行的 `disabled: !!js`，以及 `lib/index.js` 的 `isLegacyHost`，都从 `ctx.profileContext.installAnchor` 读宿主版本，读不出来一律退回 0.1.6 路径。0.1.7 及以后的宿主（含 0.2.0）走同一条路。
 
 | | 0.1.6 | 0.1.7 及以后 |
 |---|---|---|
@@ -33,9 +33,9 @@ dsh web
 | `N` 存哪里 | 插件自己向 settings 服务注册的 `dsh-novel-solo` 命名空间 | 本包的 `Config`（`count` 标了 `volatile`），由宿主投影进 profile patch |
 | 卡片挂载 | `settingsScope` + `settings.plugin.item` 插槽 | `configForms` + `plugins.item` 插槽 |
 
-两条路都在真宿主上跑过：0.1.7 一侧用 `0.1.7-rc.1` 验证（卡片出现在「插件」页、保存落进 `cordis.patch.yml`、预设进入选择器）；0.1.6 一侧因为本机没有 0.1.6 的宿主可执行文件，只做了同一版本门控的离线验证。`0.1.7-rc.2` 与 `0.2.0-rc.1` 是读那两个版本的宿主源码核对的，没有实跑：预设行的字段、`settings.configure` / `configForms` 两个接口、`plugins.item` 插槽和 `profileContext.installAnchor` 与 `0.1.7-rc.1` 完全一致。
+两条路都在真宿主上跑过：0.1.7 一侧用 `0.1.7-rc.1` 验证（卡片出现在「插件」页、保存落进 `cordis.patch.yml`、预设进入选择器）；0.1.6 一侧因为本机没有 0.1.6 的宿主可执行文件，只做了同一版本门控的离线验证。`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2` 与 `0.2.1-alpha.1` 是读那几个版本的宿主源码核对的，没有实跑：预设行的字段、`settings.configure` / `configForms` 两个接口、`plugins.item` 插槽和 `profileContext.installAnchor` 与 `0.1.7-rc.1` 完全一致。
 
-插件能不能加载，在它的代码跑起来之前就定完了：从 `0.1.7-rc.1` 起宿主会拿 `peerDependencies` 里每一个 `@deepseek-ai/dsh*` 范围去比对当前版本，对不上就把整行禁用。`0.2.0-rc.1` 被点名了，其后的 0.2.0 构建没有——没人核对过的版本就是另一个宿主。`engines.dsh` 只是把同一份清单复述给读者看，宿主并不解析它。装到此前拒绝本插件的宿主上要重启 `dsh web`，因为这个判定发生在 profile 组装阶段。
+插件能不能加载，在它的代码跑起来之前就定完了：从 `0.1.7-rc.1` 起宿主会拿 `peerDependencies` 里每一个 `@deepseek-ai/dsh*` 范围去比对当前版本，对不上就把整行禁用。所以这份清单以一个开区间收尾——`>=0.1.7-alpha.1`，不写上界——因为本插件不绑定任何特定宿主构建：走哪条路由它自己的版本门控在装载时才决定，那么一个还没人核对过的版本也该照常把插件跑起来，而不是被一道失败即关的检查整个挡掉。开区间之前被点名的版本才是真正逐一比对过的。开区间不承诺的是契约变更后的行为：将来若出事，先坏的会是声明式预设行，而那一次的修改属于 patch 文件，不属于范围。`engines.dsh` 只是把同一份清单复述给读者看，宿主并不解析它。装到此前拒绝本插件的宿主上要重启 `dsh web`，因为这个判定发生在 profile 组装阶段。
 
 `0.1.5` 起 persona 使用 `@deepseek-ai/dsh-persona` 的新配置字段 `prefix`（0.1.2-rc.1 的旧字段 `text` 已移除），更老的宿主需要手工把 persona 行的 `text:` 改名成 `prefix:`（`complete` / `includeRuntimeContext` 不变）。每个宿主 home 各持一份铺设副本，旧 home 的 `text:` 副本切回旧宿主仍可用。
 
