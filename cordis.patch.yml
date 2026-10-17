@@ -4,7 +4,7 @@
 # 版本探测二选一（从 ctx.profileContext.installAnchor 读宿主自身版本）：
 #   - 宿主 >= 0.1.7：声明行生效——0.1.7 起 <dshHome>/.agent-presets/ 目录扫描已
 #     删除，预设的唯一契约就是往 composition 插一行 @deepseek-ai/dsh-agent-preset；
-#     用户在 Web 预设编辑器里的保存会按行 id 覆盖本行的 config.plugins。
+#     用户在 profile 补丁层写的同 id 覆盖行仍作用于本行。
 #   - 宿主 < 0.1.7（或探测失败）：声明行禁用（0.1.6 没有该包，但 disabled 行先于
 #     名称解析被过滤，不会因缺包致命），改由 node 半区把 template/ 幂等铺设到
 #     <dshHome>/.agent-presets/novel-solo/。
@@ -171,20 +171,17 @@
                 config:
                   provider: spawn
                   toolName: subagent
-                  backgroundMode: continuable
               - id: novel-solo-tool-subagent-fork
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
                   provider: fork
                   toolName: subagent_fork
-                  backgroundMode: continuable
               - id: novel-solo-tool-subagent-codex
                 name: '@deepseek-ai/dsh-tool-subagent'
                 disabled: true
                 config:
                   provider: codex
                   toolName: subagent_codex
-                  enableRunInBackground: false
                   maxDepth: provider-managed
               - id: novel-solo-tool-subagent-claude-code
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -192,10 +189,9 @@
                 config:
                   provider: claude-code
                   toolName: subagent_claude_code
-                  enableRunInBackground: false
                   maxDepth: provider-managed
-              - id: novel-solo-workflow-worker-thread
-                name: '@deepseek-ai/dsh-workflow-worker-thread'
+              - id: novel-solo-workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
                 disabled: true
                 config:
                   provider: spawn

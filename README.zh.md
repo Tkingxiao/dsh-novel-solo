@@ -33,9 +33,11 @@ dsh web
 | `N` 存哪里 | 插件自己向 settings 服务注册的 `dsh-novel-solo` 命名空间 | 本包的 `Config`（`count` 标了 `volatile`），由宿主投影进 profile patch |
 | 卡片挂载 | `settingsScope` + `settings.plugin.item` 插槽 | `configForms` + `plugins.item` 插槽 |
 
-两条路都在真宿主上跑过：0.1.7 一侧用 `0.1.7-rc.1` 验证（卡片出现在「插件」页、保存落进 `cordis.patch.yml`、预设进入选择器）；0.1.6 一侧因为本机没有 0.1.6 的宿主可执行文件，只做了同一版本门控的离线验证。`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2` 与 `0.2.1-alpha.1` 是读那几个版本的宿主源码核对的，没有实跑：预设行的字段、`settings.configure` / `configForms` 两个接口、`plugins.item` 插槽和 `profileContext.installAnchor` 与 `0.1.7-rc.1` 完全一致。
+两条路都在真宿主上跑过：0.1.7 一侧用 `0.1.7-rc.1` 验证（卡片出现在「插件」页、保存落进 `cordis.patch.yml`、预设进入选择器）；0.1.6 一侧因为本机没有 0.1.6 的宿主可执行文件，只做了同一版本门控的离线验证。本机现在的宿主是 `0.2.0-rc.1`、`0.2.1-alpha.3`、`0.2.1-rc.2`，两个插件在它们上同时装、同时起 web 跑过：node 半区在跑（`.dsh-novel-solo-data` 镜像照写）、`--dump-config` 里两条声明行与 roster id `novel-solo` 都在、没有任何整行被禁用；卡片本身没在 0.2.1 的浏览器里重新点过，但这条路上会用到的接口都对着 `0.2.1-rc.2` 的宿主源码逐个核过——`plugins.item` 插槽、`configForms.get` / `whileServed`、`settings.configure` / `update`、client manifest 的 `id`/`url`/`rev`、`@deepseek-ai/dsh-client-locale` 的 `bind` / `register`，与 `0.1.7-rc.1` 完全一致。`0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-alpha.1` 仍然只读源码、没实跑。
 
-插件能不能加载，在它的代码跑起来之前就定完了：从 `0.1.7-rc.1` 起宿主会拿 `peerDependencies` 里每一个 `@deepseek-ai/dsh*` 范围去比对当前版本，对不上就把整行禁用。所以这份清单以一个开区间收尾——`>=0.1.7-alpha.1`，不写上界——因为本插件不绑定任何特定宿主构建：走哪条路由它自己的版本门控在装载时才决定，那么一个还没人核对过的版本也该照常把插件跑起来，而不是被一道失败即关的检查整个挡掉。开区间之前被点名的版本才是真正逐一比对过的。开区间不承诺的是契约变更后的行为：将来若出事，先坏的会是声明式预设行，而那一次的修改属于 patch 文件，不属于范围。`engines.dsh` 只是把同一份清单复述给读者看，宿主并不解析它。装到此前拒绝本插件的宿主上要重启 `dsh web`，因为这个判定发生在 profile 组装阶段。
+0.2.x 真的动过、本包已跟上的三处：`@deepseek-ai/dsh-workflow-worker-thread` 被并进 PTC 引擎，那行改成 `@deepseek-ai/dsh-workflow-ptc`（仍 `disabled: true`）；`tool-subagent` 删掉了 `backgroundMode` 与 `enableRunInBackground`，留着不报错但纯属死配置，已从行里移除；0.2.x 起浏览器只装载与宿主同版本的 client graph，所以宿主升级后要刷新页面，卡片才会重新挂上。
+
+插件能不能加载，在它的代码跑起来之前就定完了：从 `0.1.7-rc.1` 起宿主会拿 `peerDependencies` 里每一个 `@deepseek-ai/dsh*` 范围去比对当前版本，对不上就把整行禁用；从 `0.2.1-alpha.4` 起改成先看 `engines.dsh`——只要写了它，就只由它决定，`peerDependencies` 不再参与（两条规则分别在 `0.2.1-alpha.3` 与 `0.2.1-rc.2` 的宿主代码上实测过）。所以两份清单都留着：从 `0.1.6-alpha.1` 点名到 `0.2.1-rc.2`，再以 `>=0.1.7-alpha.1` 开区间收尾、不写上界——因为本插件不绑定任何特定宿主构建：走哪条路由它自己的版本门控在装载时才决定，那么一个还没人核对过的版本也该照常把插件跑起来，而不是被一道失败即关的检查整个挡掉。开区间之前被点名的版本才是真正逐一比对过的。开区间不承诺的是契约变更后的行为：将来若出事，先坏的会是声明式预设行，而那一次的修改属于 patch 文件，不属于范围——同理，开区间只保证「能装载」，不代表这份预设会跟着出厂 `standard` 一起长新行；出厂新增的 `time-context`、`tool-schedule`、`plugin-market/tools` 本预设至今不带，要跟上得改 `cordis.patch.yml`。装到此前拒绝本插件的宿主上要重启 `dsh web`，因为这个判定发生在 profile 组装阶段。
 
 `0.1.5` 起 persona 使用 `@deepseek-ai/dsh-persona` 的新配置字段 `prefix`（0.1.2-rc.1 的旧字段 `text` 已移除），更老的宿主需要手工把 persona 行的 `text:` 改名成 `prefix:`（`complete` / `includeRuntimeContext` 不变）。每个宿主 home 各持一份铺设副本，旧 home 的 `text:` 副本切回旧宿主仍可用。
 
@@ -64,7 +66,7 @@ persona 正文在 `template/persona.md`；`template/agent.cordis.yml`（同步�
 
 ## 工具瘦身
 
-预设通过行级 `disabled: true` 硬禁用：`tool-bash`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`tool-goal`、`plan-mode`、`subagent_codex`、`subagent_claude_code`、`workflow-worker-thread`、`tool-workflow`、`tool-ralph`、`tool-todo`、`tool-web`。保留 `tool-fs`（read/write/edit）、`tool-fs-search`（glob/grep）、`str-replace-editor`（view/create/str_replace/insert）、`tool-pwsh`（已解禁，仅做文件系统管理：改文件夹/文件名、删除文件夹/文件）、`subagent`/`subagent_fork`、`list_agents` 等。
+预设通过行级 `disabled: true` 硬禁用：`tool-bash`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`tool-goal`、`plan-mode`、`subagent_codex`、`subagent_claude_code`、`workflow-ptc`、`tool-workflow`、`tool-ralph`、`tool-todo`、`tool-web`。保留 `tool-fs`（read/write/edit）、`tool-fs-search`（glob/grep）、`str-replace-editor`（view/create/str_replace/insert）、`tool-pwsh`（已解禁，仅做文件系统管理：改文件夹/文件名、删除文件夹/文件）、`subagent`/`subagent_fork`、`list_agents` 等。
 
 随包还携带一个 **preset 作用域**的 vendored 插件（仅对挂载 `novel-solo` 预设的会话生效）：
 

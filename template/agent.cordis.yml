@@ -132,20 +132,17 @@
       config:
         provider: spawn
         toolName: subagent
-        backgroundMode: continuable
     - id: novel-solo-tool-subagent-fork
       name: '@deepseek-ai/dsh-tool-subagent'
       config:
         provider: fork
         toolName: subagent_fork
-        backgroundMode: continuable
     - id: novel-solo-tool-subagent-codex
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: true
       config:
         provider: codex
         toolName: subagent_codex
-        enableRunInBackground: false
         maxDepth: provider-managed
     - id: novel-solo-tool-subagent-claude-code
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -153,10 +150,9 @@
       config:
         provider: claude-code
         toolName: subagent_claude_code
-        enableRunInBackground: false
         maxDepth: provider-managed
-    - id: novel-solo-workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
+    - id: novel-solo-workflow-ptc
+      name: '@deepseek-ai/dsh-workflow-ptc'
       disabled: true
       config:
         provider: spawn
