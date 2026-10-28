@@ -1,4 +1,13 @@
 # The `novel-solo` agent preset (quantization-robust single-author novel studio)
+#
+# persona 前缀是模板：渲染时严格解析 {{name}}，只认宿主注册过的提示词变量（0.2.1
+# 只有 provider / model）。任何未注册的名字——比如曾经写在这里的 {{cwd}}——不会降级
+# 成字面量，而是直接抛 `unknown prompt variable ... in section
+# "deployment:persona-prefix"`，预设整行装载失败、连对话都发不出去（issue #2）。
+# 工作目录别再写成变量：运行时上下文自带 required 的 Current working directory
+# （complete / includeRuntimeContext 都压不掉它），另有 working_directory 工具可查。
+# persona.md 里一律不出现 {{ }}；npm run check 会用 scripts/sync-preset-patch.mjs
+# 的门禁把这条守住。
 - id: novel-solo-persona
   name: '@deepseek-ai/dsh-persona'
   config:
@@ -58,8 +67,12 @@
   name: '@deepseek-ai/dsh-tool-str-replace-editor'
   config:
     maxOutputChars: 16000
+# read/write/edit 三件套留着做 str_replace_editor 的失效备选；read_image 关掉：
+# 纯文本创作用不上，量化模型也多半不吃图，少一个 schema 就少一次选错。
 - id: novel-solo-tool-fs
   name: '@deepseek-ai/dsh-tool-fs'
+  config:
+    readImage: false
 - id: novel-solo-tool-fs-search
   name: '@deepseek-ai/dsh-tool-fs-search'
   config:
@@ -182,3 +195,31 @@
   config:
     fetch: false
     searchTimeoutMs: 60000
+
+# ── 0.2.1 新增的模型可见工具链：筛查后一律不挂载 ──────────────────────────────
+# 宿主 0.2.1 的 standard 预设新增了 schedule（定时任务）、command-goal（/goal 命令）、
+# present（交付物演示）、plugin-manager / plugin-market（插件市场工具）。量化模型下
+# 每多一个工具 schema，就多一次选错的机会，本预设一个都不要。
+#
+# 严格说「不写这行」就已经不挂载了——预设的 plugins 是完整组合，没列的行不会进这
+# 个 agent。但宿主自己在 web 层用的是「禁用而不删除」，理由是漏写的行会在有人重排
+# 组合的那天悄悄长回来；这里照同一条纪律把「知道但不要」钉在纸上。disabled 行先于
+# 名称解析被过滤，老宿主上没有这些包也不会致命。
+#
+# 另外两种不挂载直接不写行：agent-instructions（AGENTS.md 注入，本预设 complete:true
+# 用不上）、time-context（时间上文，写作流程不需要）。
+- id: novel-solo-tool-schedule
+  name: '@deepseek-ai/dsh-tool-schedule'
+  disabled: true
+- id: novel-solo-command-goal
+  name: '@deepseek-ai/dsh-command-goal'
+  disabled: true
+- id: novel-solo-tool-present
+  name: '@deepseek-ai/dsh-tool-present'
+  disabled: true
+- id: novel-solo-tool-plugin-manager
+  name: '@deepseek-ai/dsh-plugin-manager/tools'
+  disabled: true
+- id: novel-solo-tool-plugin-market
+  name: '@deepseek-ai/dsh-plugin-market/tools'
+  disabled: true

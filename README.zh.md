@@ -35,7 +35,7 @@ dsh web
 
 两条路都在真宿主上跑过：0.1.7 一侧用 `0.1.7-rc.1` 验证（卡片出现在「插件」页、保存落进 `cordis.patch.yml`、预设进入选择器）；0.1.6 一侧因为本机没有 0.1.6 的宿主可执行文件，只做了同一版本门控的离线验证。本机现在的宿主是 `0.2.0-rc.1`、`0.2.1-alpha.3`、`0.2.1-rc.2`，两个插件在它们上同时装、同时起 web 跑过：node 半区在跑（`.dsh-novel-solo-data` 镜像照写）、`--dump-config` 里两条声明行与 roster id `novel-solo` 都在、没有任何整行被禁用；卡片本身没在 0.2.1 的浏览器里重新点过，但这条路上会用到的接口都对着 `0.2.1-rc.2` 的宿主源码逐个核过——`plugins.item` 插槽、`configForms.get` / `whileServed`、`settings.configure` / `update`、client manifest 的 `id`/`url`/`rev`、`@deepseek-ai/dsh-client-locale` 的 `bind` / `register`，与 `0.1.7-rc.1` 完全一致；这份接缝清单在 `0.2.1-rc.3` 又重读了一遍，无一变动（插件管理页只多了一个给新 `entry-customization` 插件用的增量 `openList()` 反射方法）。`0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-alpha.1` 仍然只读源码、没实跑。
 
-0.2.x 真的动过、本包已跟上的三处：`@deepseek-ai/dsh-workflow-worker-thread` 被并进 PTC 引擎，那行改成 `@deepseek-ai/dsh-workflow-ptc`（仍 `disabled: true`）；`tool-subagent` 删掉了 `backgroundMode` 与 `enableRunInBackground`，留着不报错但纯属死配置，已从行里移除；0.2.x 起浏览器只装载与宿主同版本的 client graph，所以宿主升级后要刷新页面，卡片才会重新挂上。
+0.2.x 真的动过、本包已跟上的四处：`@deepseek-ai/dsh-workflow-worker-thread` 被并进 PTC 引擎，那行改成 `@deepseek-ai/dsh-workflow-ptc`（仍 `disabled: true`）；`tool-subagent` 删掉了 `backgroundMode` 与 `enableRunInBackground`，留着不报错但纯属死配置，已从行里移除；0.2.x 起浏览器只装载与宿主同版本的 client graph，所以宿主升级后要刷新页面，卡片才会重新挂上。第四处是 persona 的插值口径：从 0.2.1 起宿主对 `{{…}}` 做**严格**解析，未注册的变量名直接抛 `unknown prompt variable ... in section "deployment:persona-prefix"`，而 persona 里原有的 `{{cwd}}` 从来不是宿主变量（整个宿主只注册了 `provider` 与 `model`），于是预设整行装载失败、一条对话也发不出去——就是 issue #2。现已改成不依赖模板变量：工作目录取运行时上下文里 required 的 `Current working directory`（`complete` / `includeRuntimeContext` 都压不掉它），需要绝对路径时调 `working_directory` 工具查；`npm run check` 也加了一条门禁，persona 里再出现未注册变量会直接让 CI 红。
 
 插件能不能加载，在它的代码跑起来之前就定完了：从 `0.1.7-rc.1` 起宿主会拿 `peerDependencies` 里每一个 `@deepseek-ai/dsh*` 范围去比对当前版本，对不上就把整行禁用；从 `0.2.1-alpha.4` 起改成先看 `engines.dsh`——只要写了它，就只由它决定，`peerDependencies` 不再参与（两条规则分别在 `0.2.1-alpha.3` 与 `0.2.1-rc.2` 的宿主代码上实测过）。所以两份清单都留着：从 `0.1.6-alpha.1` 点名到 `0.2.1-rc.3`，再以 `>=0.1.7-alpha.1` 开区间收尾、不写上界——因为本插件不绑定任何特定宿主构建：走哪条路由它自己的版本门控在装载时才决定，那么一个还没人核对过的版本也该照常把插件跑起来，而不是被一道失败即关的检查整个挡掉。开区间之前被点名的版本才是真正逐一比对过的。开区间不承诺的是契约变更后的行为：将来若出事，先坏的会是声明式预设行，而那一次的修改属于 patch 文件，不属于范围——同理，开区间只保证「能装载」，不代表这份预设会跟着出厂 `standard` 一起长新行；出厂新增的 `time-context`、`tool-schedule`、`plugin-market/tools` 本预设至今不带，要跟上得改 `cordis.patch.yml`。装到此前拒绝本插件的宿主上要重启 `dsh web`，因为这个判定发生在 profile 组装阶段。
 
@@ -62,11 +62,15 @@ persona 正文在 `template/persona.md`；`template/agent.cordis.yml`（同步�
 | 六类文档标准结构 | 叙事方法 / 核心世界观 / 名词索引 / 大纲 / 章节目录 / 人物档案 逐字段模板 |
 | 写作与审核规范 | 正文规则、禁AI腔清单、章节审核 A–G + 绿黄红、审核报告 md、全书终审与合订 |
 | 工具使用标准 | read/write/edit/glob/grep/subagent 等逐工具铁律 |
-| 项目与纪律 | 项目目录 `{{cwd}}/项目名/`、一次只做一件事等 |
+| 项目与纪律 | 项目目录＝工作目录下的 `项目名` 文件夹；路径一律取运行时上下文给出的 Current working directory 或 `working_directory` 工具，不写模板变量、一次只做一件事等 |
 
 ## 工具瘦身
 
-预设通过行级 `disabled: true` 硬禁用：`tool-bash`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`tool-goal`、`plan-mode`、`subagent_codex`、`subagent_claude_code`、`workflow-ptc`、`tool-workflow`、`tool-ralph`、`tool-todo`、`tool-web`。保留 `tool-fs`（read/write/edit）、`tool-fs-search`（glob/grep）、`str-replace-editor`（view/create/str_replace/insert）、`tool-pwsh`（已解禁，仅做文件系统管理：改文件夹/文件名、删除文件夹/文件）、`subagent`/`subagent_fork`、`list_agents` 等。
+预设通过行级 `disabled: true` 硬禁用：`tool-bash`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`tool-goal`、`plan-mode`、`subagent_codex`、`subagent_claude_code`、`workflow-ptc`、`tool-workflow`、`tool-ralph`、`tool-todo`、`tool-web`。保留 `tool-fs`（read/write/edit，`read_image` 关掉）、`tool-fs-search`（glob/grep）、`str-replace-editor`（view/create/str_replace/insert）、`tool-pwsh`（已解禁，仅做文件系统管理：改文件夹/文件名、删除文件夹/文件）、`subagent`/`subagent_fork`、`list_agents` 等。
+
+0.2.1 的 `standard` 预设又长出四条模型可见的工具链，本预设逐条筛过、一条都不要：`tool-schedule`（定时任务）、`command-goal`（`/goal` 命令）、`tool-present`（交付物演示）、`plugin-manager` / `plugin-market` 的 `tools`。它们都以 `disabled: true` 的行显式写在那里——预设的 `plugins` 是完整组合，漏写就已经不挂载，但宿主自己在 web 层用的就是「禁用而不删除」，因为漏写的行会在有人重排组合的那天悄悄长回来；`disabled` 行先于名称解析被过滤，老宿主上没有这些包也不会致命。`agent-instructions`（AGENTS.md 注入）与 `time-context`（时间上文）两个纯提示词行干脆不写：本预设 `complete: true`，写了也用不上。
+
+还有一件不在本预设管辖范围：`working_directory` 工具是宿主平面的行，任何会话都会拿到，插件压不掉；persona 干脆把它当成路径真源来用。
 
 随包还携带一个 **preset 作用域**的 vendored 插件（仅对挂载 `novel-solo` 预设的会话生效）：
 
@@ -80,11 +84,11 @@ lib/client.js       浏览器半区：「子 agent 数量」卡片，分别挂�
 cordis.patch.yml    安装进 web profile 的层：插件行 + 声明式 novel-solo 预设行（0.1.7 以下禁用该行）
 cordis.yml          开发用 overlay：只插插件行、不带预设
 template/           novel-solo 预设（agent.cordis.yml + persona.md + preset.yml + vendored 插件），随包分发
-scripts/sync-preset-patch.mjs  把 template/agent.cordis.yml 同步进 patch 的生成区，`--check` 校验一致性
+scripts/sync-preset-patch.mjs  把 template/agent.cordis.yml 同步进 patch 的生成区，`--check` 校验一致性，并拦下 persona 里宿主不认识的 `{{变量}}`
 package.json        dsh.bundle / dsh.client 元数据，使插件可被插件市场/清单识别
 ```
 
-`npm run check` 会语法检查两半区，并重跑上面的 patch/模板一致性校验。
+`npm run check` 会语法检查两半区，重跑上面的 patch/模板一致性校验，并检查 `template/persona.md` 里没有宿主不认识的 `{{变量}}`（宿主只注册 `provider` / `model`；写错一个名字就是装载期异常，不是界面上的小小瑕疵）。
 
 ## 环境变量
 
