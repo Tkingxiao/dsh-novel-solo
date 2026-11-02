@@ -1,0 +1,61 @@
+name: Publish to npm
+
+# Three ways in:
+#  - a `v*` tag push (the same push that makes the GitHub release), so cutting a release
+#    is one action;
+#  - `release: published`, for a release created in the web UI;
+#  - or manually from the Actions tab.
+# Every path is idempotent: a version that is already on npm is skipped, not failed.
+on:
+  release:
+    types: [published]
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# Trusted publishing: npm exchanges this job's OIDC token for a short-lived credential,
+# so no NPM_TOKEN secret is stored on the repository. `id-token: write` is the whole
+# permission the exchange needs; `contents: read` is all the checkout needs.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match package.json v$version"
+            exit 1
+          fi
+
+      - name: Is this version already on npm?
+        id: npm
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "$name@$version is already published; skipping"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No dependencies and no build step: lib/, template/ and cordis.patch.yml are the
+      # published files, and they come straight from the tagged commit. The preset rows
+      # are generated from template/ by scripts/sync-preset-patch.mjs, so --check is run
+      # here rather than trusting whichever cordis.patch.yml was last synchronized.
+      - if: steps.npm.outputs.present == 'false'
+        run: npm run check
+
+      - if: steps.npm.outputs.present == 'false'
+        run: npm publish --provenance --access public
