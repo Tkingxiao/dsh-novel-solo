@@ -177,8 +177,15 @@
             config:
               - id: novel-solo-tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
+              # `list_agents` 在 0.2.1 线上由 `…/list-agents` 这个**子路径入口**单独提供（主入口只有
+              # send_message / interrupt_agent）；0.2.2-alpha.2 起子路径被删掉、三个工具一起并进主入口，
+              # 出厂 standard 也在同一版把自己那条 `tool-subagent-list-agents` 行删了。所以这条的
+              # `disabled` 是能力探测而不是偏好：判据是子路径能不能 resolve，探不到就禁用整行
+              # （disabled 行在 Loader 解析包名之前被过滤，不会连累整份预设）。0.2.2 上主入口已经
+              # 给了 `list_agents`，再声明一次只是重复注册。
               - id: novel-solo-tool-subagent-list-agents
                 name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+                disabled: !!js (() => { try { process.getBuiltinModule('node:module').createRequire(ctx.baseUrl).resolve('@deepseek-ai/dsh-tool-subagent-control/list-agents'); return false } catch { return true } })()
               - id: novel-solo-tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
                 config:
