@@ -1,10 +1,10 @@
 # dsh-novel-solo
 
-A **single-author novel-writing plugin** for DeepSeek Harness: a **subagent concurrency setting** plus a **complete novel-creation preset** (persona). It is tuned for quantized small models — the tool catalog is slimmed and output behavior hardened — so you can run a full-length novel pipeline locally.
+A **single-author novel-writing plugin** for DeepSeek Harness: a **subagent concurrency setting** plus a **complete novel-creation preset** (persona). It is tuned for quantized small models — the tool catalog is slimmed and output behavior hardened — so you can run a full-length novel pipeline locally. Requires **dsh >= 0.2.1**.
 
 ## Features
 
-- **GUI setting**: a "Subagent count (1-12)" card on the plugin page (0.1.7: left rail → Plugins; 0.1.6: Settings → Plugins), with built-in zh/en i18n.
+- **GUI setting**: a "Subagent count (1-12)" card on the plugin page (left rail → Plugins), with built-in zh/en i18n.
 - **Full creation preset**: ships the `novel-solo` preset with a self-driven persona that follows a fixed pipeline — 叙事方法 (narrative method) → 核心世界观 (core worldview) → 名词索引 (noun index) → 大纲 (outline) → 章节目录 (chapter list) → 人物档案 (character files) → chapter-by-chapter writing → per-chapter review → final whole-book review & assembly.
 - **Quantized-safe protocol**: plain CJK + common punctuation only, no JSON, no escapes, avoids fragile tokens; minimal tool calls, one at a time.
 - **Review loop**: every chapter is reviewed (green/yellow/red) across 7 dimensions (setting / character / catalog / narrative / text rules / AI-cliché / plot logic); each report is written to a markdown file; when all chapters pass, a whole-book review runs and the book is assembled.
@@ -19,37 +19,19 @@ dsh plugin --profile web add "dsh-novel-solo"
 dsh web
 ```
 
-Then open the plugin page — **Plugins** in the left rail on 0.1.7, **Settings → Plugins** on 0.1.6 — and the dsh-novel-solo "Subagent count" card appears.
-
-On hosts older than 0.1.7 the plugin additionally **deploys the preset idempotently** from `template/` to `<dshHome>/.agent-presets/novel-solo/`, because that was the only preset contract there (an existing target is skipped — your edited preset is never overwritten). On 0.1.7 nothing is deployed: the preset arrives as a declarative row in the profile patch.
+Then open the plugin page (**Plugins** in the left rail) and the dsh-novel-solo "Subagent count" card appears.
 
 ## Host compatibility
 
-The plugin supports **DSH `0.1.6-alpha.1` / `0.1.6-alpha.2` and, from `0.1.7-alpha.1` on, every later host release** and picks its route per host. Both halves probe the host's own version through `ctx.profileContext.installAnchor` — the YAML `disabled:` gate in `cordis.patch.yml` and the same check in `lib/index.js` — and fall back to the 0.1.6 route whenever the version cannot be read. Everything from 0.1.7 on takes the same route, 0.2.0 included.
-
-| | 0.1.6 | 0.1.7 and later |
-|---|---|---|
-| Preset delivery | deploy `template/` into `<dshHome>/.agent-presets/novel-solo/` | declarative `@deepseek-ai/dsh-agent-preset` row in the patch |
-| Where `N` is saved | `dsh-novel-solo` settings namespace the plugin registers | the plugin's own `Config` (`count` is `volatile`), projected into the profile patch |
-| Card slot | `settings.plugin.item` via `settingsScope` | `plugins.item` via `configForms` |
-
-Both routes are exercised against a real host; the 0.1.7 one on `0.1.7-rc.1` (card renders on the Plugins page, saves land in `cordis.patch.yml`, preset shows up in the picker). The 0.1.6 route is covered by the same version gate offline, since no 0.1.6 host binary is installed next to the 0.1.7 one. The hosts actually installed here now are `0.2.0-rc.1`, `0.2.1-alpha.3` and `0.2.1-rc.2`, and both plugins were installed and booted side by side on each: the node half runs (the `.dsh-novel-solo-data` mirror is still written), `--dump-config` shows both declaration rows and the `novel-solo` roster id, and nothing gets force-disabled. The card itself was not re-clicked in a 0.2.1 browser, but every seam it rides on was checked against the host source at `0.2.1-rc.2` — the `plugins.item` slot, `configForms.get` / `whileServed`, `settings.configure` / `update`, the client manifest's `id`/`url`/`rev`, and `bind` / `register` on `@deepseek-ai/dsh-client-locale` — all identical to `0.1.7-rc.1`; the same seam list was re-read at `0.2.1-rc.3` and none of it moved (the plugin-manager page only gained an additive `openList()` reflection method for the new entry-customization plugin). `0.1.7-rc.2`, `0.2.0-rc.2` and `0.2.1-alpha.1` remain source-checked only, not run.
-
-Four 0.2.x changes this package has caught up with: `@deepseek-ai/dsh-workflow-worker-thread` was folded into the PTC engine, so that row is now `@deepseek-ai/dsh-workflow-ptc` (still `disabled: true`); `tool-subagent` dropped `backgroundMode` and `enableRunInBackground` (they no longer error, they simply do nothing, so they were removed); and since 0.2.x a browser only loads a client graph whose release matches the host's, so after a host upgrade the page must be reloaded before the card re-mounts. The fourth is how the persona is interpolated: since 0.2.1 the host resolves `{{…}}` **strictly**, and an unregistered name throws `unknown prompt variable ... in section "deployment:persona-prefix"`. The persona's `{{cwd}}` was never a host variable — the whole host registers only `provider` and `model` — so the preset row failed to load and no message could be sent at all (issue #2). It no longer depends on template variables: the working directory comes from the required `Current working directory` entry in the runtime context (neither `complete` nor `includeRuntimeContext` suppresses a required contribution), and an absolute path is one `working_directory` call away; `npm run check` now also lints the persona so an unregistered variable fails the build instead of the preset.
-
-On `0.2.2-alpha.2` one thing moved that this preset does touch: `@deepseek-ai/dsh-tool-subagent-control/list-agents` **no longer exists as a subpath export** — the `list_agents` tool was folded into that package's main entry, and factory `standard` deleted its own `tool-subagent-list-agents` row in the same release. The row is therefore probed rather than declared: `disabled` resolves the subpath and switches the row off when it cannot be found, which keeps the tool on 0.2.1 and avoids a duplicate registration on 0.2.2. A `disabled` row is filtered before the Loader resolves any package name, so a host without the subpath loses nothing else. Two 0.2.2 facts that do **not** reach this package: `tool-subagent` renamed `modelSelectionSettings` to `modelSelection` (this preset never set that key), and `{{…}}` interpolation itself is unchanged — the persona no longer references any template variable, so the registered-variable set is not something this preset depends on. `template/agent.cordis.yml` is the single source for the whole row list: `cordis.patch.yml`'s generated region is produced from it by `node scripts/sync-preset-patch.mjs`, so the probe belongs in the template and the patch is regenerated, never hand-edited.
-
-Whether the plugin loads at all is decided before its code runs: since `0.1.7-rc.1` the host evaluates every `@deepseek-ai/dsh*` range in `peerDependencies` against the running release and disables the row if one of them doesn't match, and since `0.2.1-alpha.4` it consults `engines.dsh` first — once that field exists it decides the verdict alone and `peerDependencies` no longer participates (each rule was tested against the host code of `0.2.1-alpha.3` and `0.2.1-rc.2` respectively). So both lists are kept: they name `0.1.6-alpha.1` through `0.2.2-alpha.2`, then end in an open arm — `>=0.1.7-alpha.1`, with no upper bound — because nothing in this plugin is bound to a particular host build: its route is chosen by its own version gate at load time, so an unchecked release should still get a working plugin rather than lose one to a check that fails closed. The versions named before the open arm are the ones that were actually compared. The umbrella does not promise behavior across a contract change: the declarative preset row is the part a future host would break first, and the fix for that belongs in the patch file, not in the range — and likewise the open arm only promises that the plugin loads, not that this preset grows whatever factory `standard` adds next; the `time-context`, `tool-schedule` and `plugin-market/tools` rows the factory added since 0.1.7 are still deliberately absent, and adopting them is a `cordis.patch.yml` change. Reinstalling on a host that previously refused the plugin needs a `dsh web` restart, since the decision is made while the profile is composed.
-
-Since `0.1.5`, the persona uses the `@deepseek-ai/dsh-persona` config key `prefix` (the `text` key of 0.1.2-rc.1 was removed), so hosts older than that need the persona row renamed by hand. Each home keeps its own deployed copy; homes provisioned by older hosts keep their `text:` copy and still work when you switch back.
+Requires **dsh >= 0.2.1**. The preset arrives as a declarative `@deepseek-ai/dsh-agent-preset` row in the profile patch, and the count lives in this plugin's volatile `Config` projected into the patch; loadability is decided by `engines.dsh` alone. `template/agent.cordis.yml` is the single source for the preset's row list — the generated region in `cordis.patch.yml` is guarded by `npm run check`, never hand-edited.
 
 ## How the subagent count takes effect
 
 DSH's `agent/request` waterfall only lets a plugin rewrite LLM routing/config — it cannot inject or rewrite `system`/`messages` — so "GUI → model prompt" dynamic injection cannot go through the request waterfall. This plugin wires the value through files instead:
 
-1. The card saves `N` into the host's settings store (see the table above). That is the source of truth.
+1. The card saves `N` into the host's settings store — the source of truth.
 2. On load, the node half mirrors it to `<dshHome>/.dsh-novel-solo-data/agent-count.json`.
-3. The persona row resolves `!!js` while the preset loads: it reads `template/persona.md` and replaces that file's `并发上限 N=<number>` anchor with the mirrored number. The persona then decides: `N=1` the main agent does everything itself; `N>1` writing/review tasks are delegated to subagents while the main agent only dispatches and silently waits.
+3. The persona row resolves `!!js` while the preset loads: it reads `template/persona.md` and replaces that file's `并发上限 N=<number>` anchor with the mirrored number. `N=1` the main agent does everything itself; `N>1` writing/review tasks are delegated to subagents while the main agent only dispatches and silently waits.
 
 > Note: the mirror and the persona are both resolved while the host loads its plugins, so **a GUI change reaches the prompt only after a host restart**. Volatile settings give the node side no change callback, so there is nothing to push the new value out live.
 
@@ -70,9 +52,7 @@ The persona body lives in `template/persona.md`; `template/agent.cordis.yml` (mi
 
 The preset hard-disables these rows via `disabled: true`: `tool-bash`, `tool-jobs`, `skill-filesystem`, `tool-skill`, `tool-goal`, `plan-mode`, `subagent_codex`, `subagent_claude_code`, `workflow-ptc`, `tool-workflow`, `tool-ralph`, `tool-todo`, `tool-web`. It keeps `tool-fs` (read/write/edit, with `read_image` switched off), `tool-fs-search` (glob/grep), `str-replace-editor` (view/create/str_replace/insert), `tool-pwsh` (filesystem management only: rename/delete files & folders), `subagent`/`subagent_fork`, `list_agents`, etc.
 
-0.2.1's `standard` preset grew four more model-facing toolchains, and this preset screens every one of them out: `tool-schedule` (cron tasks), `command-goal` (the `/goal` command), `tool-present` (deliverable presentation), and the `tools` entry of `plugin-manager` / `plugin-market`. They are spelled out as `disabled: true` rows — a preset's `plugins` is a complete composition, so an unlisted row is already absent, but the host itself disables rather than deletes on the web layer because an omitted row quietly reappears the day someone reorders the composition; and `disabled` rows are filtered before name resolution, so an older host without those packages is never killed by them. Two prompt-only rows are simply left out: `agent-instructions` (AGENTS.md injection) and `time-context` (clock context) would be dead weight under `complete: true`.
-
-One thing the preset cannot govern: the `working_directory` tool is a host-plane row every session receives, so the persona treats it as the source of truth for paths instead of fighting it.
+The 0.2.1 stock `standard` grew four more model-facing toolchains, and this preset screens every one of them out: `tool-schedule`, `command-goal`, `tool-present`, and the `tools` entry of `plugin-manager` / `plugin-market`. They are spelled out as `disabled: true` rows so they cannot quietly reappear if the composition is reordered later. Two prompt-only rows are simply left out: `agent-instructions` (AGENTS.md injection) and `time-context` (clock context) would be dead weight under `complete: true`. The `working_directory` tool is a host-plane row every session receives, so the persona treats it as the source of truth for paths instead of fighting it.
 
 It also ships a **preset-scoped** vendored plugin (active only for sessions mounting the `novel-solo` preset):
 
@@ -81,9 +61,9 @@ It also ships a **preset-scoped** vendored plugin (active only for sessions moun
 ## File structure
 
 ```
-lib/index.js        node half: host version gate, count mirror, settings seam (0.1.7 volatile `Config` form / 0.1.6 namespace), preset deploy on legacy hosts
-lib/client.js       browser half: the "Subagent count" card, mounted on `plugins.item` (0.1.7) and `settings.plugin.item` (0.1.6)
-cordis.patch.yml    installed into the web profile: the plugin row plus the declarative novel-solo preset row (disabled below 0.1.7)
+lib/index.js        node half: count mirror + settings seam (volatile `Config` form, suppresses the host's auto settings page)
+lib/client.js       browser half: the "Subagent count" card, mounted on `plugins.item` via `configForms`
+cordis.patch.yml    installed into the web profile: the plugin row plus the declarative novel-solo preset row
 cordis.yml          development overlay: card only, no preset rows
 template/           the novel-solo preset (agent.cordis.yml + persona.md + preset.yml + vendored plugin), shipped with the package
 scripts/sync-preset-patch.mjs  copies template/agent.cordis.yml into the patch's generated block; `--check` verifies it and rejects a persona that references an unregistered `{{variable}}`
@@ -97,8 +77,6 @@ package.json        dsh.bundle / dsh.client metadata so the plugin is recognizab
 | Variable | Purpose | Default |
 |---|---|---|
 | `DSH_HOME` | dsh home directory | `~/.dsh` |
-| `DSH_NOVEL_SKIP_DEPLOY` | `1` skips preset deployment (legacy hosts only) | none |
-| `DSH_NOVEL_REDEPLOY` | `1` forcibly overwrites an existing preset (use with care) | none |
 
 ## Test environment
 

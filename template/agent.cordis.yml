@@ -17,8 +17,8 @@
         try {
           const fs = process.getBuiltinModule('node:fs'), path = process.getBuiltinModule('node:path')
           const url = process.getBuiltinModule('node:url'), mod = process.getBuiltinModule('node:module')
-          // 两个宿主给出的解析基准不同：0.1.6 是本预设所在的部署目录，0.1.7 是
-          // profile 目录（不含包内资源），所以再按包名找到已安装的本包根目录。
+          // 预设行给出的解析基准是 profile 目录（不含包内资源），所以再按包名
+          // 找到已安装的本包根目录。
           const roots = []
           try { roots.push(url.fileURLToPath(ctx.baseUrl)) } catch {}
           try { roots.push(path.dirname(mod.createRequire(ctx.baseUrl).resolve('dsh-novel-solo/package.json'))) } catch {}

@@ -1,6 +1,6 @@
 // 把 template/agent.cordis.yml 同步成 cordis.patch.yml 里 preset-novel-solo 行的
-// config.plugins —— 0.1.6 的部署组合与 0.1.7 的声明式预设必须同源，只有插件包内
-// 相对路径按各自的解析基准不同（部署目录 vs 包根）。
+// config.plugins —— 预设组合的唯一真源是模板文件，只有插件包内相对路径按解析
+// 基准不同（模板相对包根，声明式行按 profile 目录）。
 // 用法：node scripts/sync-preset-patch.mjs [--check]
 import { readFileSync, writeFileSync } from 'node:fs'
 
@@ -11,8 +11,8 @@ const INDENT = ' '.repeat(10)
 const source = readFileSync(new URL('../template/agent.cordis.yml', import.meta.url), 'utf8')
 const targetUrl = new URL('../cordis.patch.yml', import.meta.url)
 
-// 部署组合里 agent.cordis.yml 位于预设目录根部，包内资源与它同级，所以模板用
-// './plugins/...' 相对自己解析。声明式预设行不能用相对路径：实测 0.1.7 的预设
+// 模板里 agent.cordis.yml 位于包内 template/ 根部，包内资源与它同级，所以模板用
+// './plugins/...' 相对自己解析。声明式预设行不能用相对路径：实测预设
 // 子行按 profile 目录（profiles/web/）解析，不是包根，因此改成包名子路径导出，
 // 由 node_modules 里的安装位置解析。
 const generated = ['        plugins:', source

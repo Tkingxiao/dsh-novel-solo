@@ -1,34 +1,19 @@
-# dsh-novel-solo: web profile bundle patch layer（dsh 0.1.6 / 0.1.7 双模式）。
+# dsh-novel-solo: web profile bundle patch layer（仅支持 dsh >= 0.2.1）。
 #
-# 预设的装载契约在 0.1.7 换了实现，本文件用 `preset-novel-solo` 行的 disabled
-# 版本探测二选一（从 ctx.profileContext.installAnchor 读宿主自身版本）：
-#   - 宿主 >= 0.1.7：声明行生效——0.1.7 起 <dshHome>/.agent-presets/ 目录扫描已
-#     删除，预设的唯一契约就是往 composition 插一行 @deepseek-ai/dsh-agent-preset；
-#     用户在 profile 补丁层写的同 id 覆盖行仍作用于本行。
-#   - 宿主 < 0.1.7（或探测失败）：声明行禁用（0.1.6 没有该包，但 disabled 行先于
-#     名称解析被过滤，不会因缺包致命），改由 node 半区把 template/ 幂等铺设到
-#     <dshHome>/.agent-presets/novel-solo/。
-# `dsh-novel-solo` 行两端都启用且无需配置：它自己按宿主版本决定铺旧目录还是只
-# 镜像数量。disabled 表达式绝不许抛错（抛错 = 该行初始化失败），一律 try/catch
-# 兜底在「旧路径」上，保证任何宿主至少有一条预设路径生效。
+# 预设的唯一契约就是往 composition 插一行 @deepseek-ai/dsh-agent-preset；用户在
+# profile 补丁层写的同 id 覆盖行仍作用于本行。0.2.1 以下的老版本不再支持：原
+# 0.1.6 目录铺设路径（node 半区铺 template/ 到 <dshHome>/.agent-presets/）与
+# preset 行的版本探测 disabled 表达式已整体删除，声明行无条件启用。
 #
-# persona 正文不在本文件里：两个宿主都由 persona 行的 !!js 表达式读 persona.md
-# 并把设置里并发上限的数字替换进「并发上限 N=<数字>」锚点（0.1.7 已没有可改写
-# 的部署文件）。预设装载时读取，改数量后需重启宿主生效。
+# persona 正文不在本文件里：由 persona 行的 !!js 表达式读包内 persona.md 并把
+# 设置里并发上限的数字替换进「并发上限 N=<数字>」锚点。预设装载时读取，改数量
+# 后需重启宿主生效。
 - insert:
     - id: dsh-novel-solo
       name: 'dsh-novel-solo'
 
     - id: preset-novel-solo
       name: '@deepseek-ai/dsh-agent-preset'
-      # 宿主 < 0.1.7（含探测失败）时禁用本行，走上面的铺设路径。
-      disabled: !!js |-
-        (() => {
-          try {
-            const m = JSON.parse(process.getBuiltinModule('node:fs').readFileSync(ctx.profileContext.installAnchor, 'utf8')).version.match(/^(\d+)\.(\d+)\.(\d+)/)
-            return !(+m[1] > 0 || (+m[1] === 0 && (+m[2] > 1 || (+m[2] === 1 && +m[3] >= 7))))
-          } catch { return true }
-        })()
       config:
         id: novel-solo
         name: 单核写作主理
@@ -56,8 +41,8 @@
                   try {
                     const fs = process.getBuiltinModule('node:fs'), path = process.getBuiltinModule('node:path')
                     const url = process.getBuiltinModule('node:url'), mod = process.getBuiltinModule('node:module')
-                    // 两个宿主给出的解析基准不同：0.1.6 是本预设所在的部署目录，0.1.7 是
-                    // profile 目录（不含包内资源），所以再按包名找到已安装的本包根目录。
+                    // 预设行给出的解析基准是 profile 目录（不含包内资源），所以再按包名
+                    // 找到已安装的本包根目录。
                     const roots = []
                     try { roots.push(url.fileURLToPath(ctx.baseUrl)) } catch {}
                     try { roots.push(path.dirname(mod.createRequire(ctx.baseUrl).resolve('dsh-novel-solo/package.json'))) } catch {}

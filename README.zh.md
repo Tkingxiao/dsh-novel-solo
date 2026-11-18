@@ -1,10 +1,10 @@
 # dsh-novel-solo
 
-DeepSeek Harness 的「单核写作」插件：一个 **子 agent 并发数量设置** + 一套**完整的小说创作预设**（persona）。面向量化小模型做了充分的工具瘦身与输出加固，适合在本机用本地模型跑长篇小说流水线。
+DeepSeek Harness 的「单核写作」插件：一个 **子 agent 并发数量设置** + 一套**完整的小说创作预设**（persona）。面向量化小模型做了充分的工具瘦身与输出加固，适合在本机用本地模型跑长篇小说流水线。要求 **dsh >= 0.2.1**。
 
 ## 特性
 
-- **GUI 设置**：在插件页提供「子 agent 数量（1-12）」设置卡片（0.1.7 在左侧栏「插件」，0.1.6 在「设置 → 插件」），随插即用，支持中/英双语。
+- **GUI 设置**：在插件页（左侧栏「插件」）提供「子 agent 数量（1-12）」设置卡片，随插即用，支持中/英双语。
 - **完整创作预设**：随插件附带 `novel-solo` 预设，内置自驱写作 persona——按固定流水线完成 叙事方法 → 核心世界观 → 名词索引 → 大纲 → 章节目录 → 人物档案 → 逐章写作 → 章节审核 → 全书终审与合订。
 - **量化安全协议**：输出只用常用汉字/普通标点、禁 JSON、禁转义、少用易崩 token；非必要不调工具、一次只调一个。
 - **审核闭环**：每章必审（绿黄红三色），A–G 七个维度（设定/人物性格/目录/叙事/正文规则/禁AI腔/剧情逻辑），审核报告落盘为 md；全书完成后统一终审并合订为单本书。
@@ -19,39 +19,21 @@ dsh plugin --profile web add "dsh-novel-solo"
 dsh web
 ```
 
-打开插件页——0.1.7 是左侧栏的「插件」，0.1.6 是「设置 → 插件」——即可看到 dsh-novel-solo 的「子 agent 数量」卡片。
-
-0.1.7 之前的宿主还会把 `template/` 里的预设**幂等铺设**到 `<dshHome>/.agent-presets/novel-solo/`（那是旧宿主唯一的预设入口；目标已存在则跳过，绝不覆盖你已编辑的预设）。0.1.7 起不再铺设，预设就是 profile patch 里的一行声明。
+打开插件页（左侧栏「插件」）即可看到 dsh-novel-solo 的「子 agent 数量」卡片。
 
 ## 宿主版本兼容性
 
-本插件支持 **DSH `0.1.6-alpha.1` / `0.1.6-alpha.2`，以及 `0.1.7-alpha.1` 起往后的每一个宿主版本**，按宿主自身版本二选一走哪条路。版本探测由两半各做一次、口径一致：`cordis.patch.yml` 里 `preset-novel-solo` 行的 `disabled: !!js`，以及 `lib/index.js` 的 `isLegacyHost`，都从 `ctx.profileContext.installAnchor` 读宿主版本，读不出来一律退回 0.1.6 路径。0.1.7 及以后的宿主（含 0.2.0）走同一条路。
-
-| | 0.1.6 | 0.1.7 及以后 |
-|---|---|---|
-| 预设交付 | 铺设 `template/` 到 `<dshHome>/.agent-presets/novel-solo/` | patch 里的声明行 `@deepseek-ai/dsh-agent-preset` |
-| `N` 存哪里 | 插件自己向 settings 服务注册的 `dsh-novel-solo` 命名空间 | 本包的 `Config`（`count` 标了 `volatile`），由宿主投影进 profile patch |
-| 卡片挂载 | `settingsScope` + `settings.plugin.item` 插槽 | `configForms` + `plugins.item` 插槽 |
-
-两条路都在真宿主上跑过：0.1.7 一侧用 `0.1.7-rc.1` 验证（卡片出现在「插件」页、保存落进 `cordis.patch.yml`、预设进入选择器）；0.1.6 一侧因为本机没有 0.1.6 的宿主可执行文件，只做了同一版本门控的离线验证。本机现在的宿主是 `0.2.0-rc.1`、`0.2.1-alpha.3`、`0.2.1-rc.2`，两个插件在它们上同时装、同时起 web 跑过：node 半区在跑（`.dsh-novel-solo-data` 镜像照写）、`--dump-config` 里两条声明行与 roster id `novel-solo` 都在、没有任何整行被禁用；卡片本身没在 0.2.1 的浏览器里重新点过，但这条路上会用到的接口都对着 `0.2.1-rc.2` 的宿主源码逐个核过——`plugins.item` 插槽、`configForms.get` / `whileServed`、`settings.configure` / `update`、client manifest 的 `id`/`url`/`rev`、`@deepseek-ai/dsh-client-locale` 的 `bind` / `register`，与 `0.1.7-rc.1` 完全一致；这份接缝清单在 `0.2.1-rc.3` 又重读了一遍，无一变动（插件管理页只多了一个给新 `entry-customization` 插件用的增量 `openList()` 反射方法）。`0.1.7-rc.2`、`0.2.0-rc.2`、`0.2.1-alpha.1` 仍然只读源码、没实跑。
-
-0.2.x 真的动过、本包已跟上的四处：`@deepseek-ai/dsh-workflow-worker-thread` 被并进 PTC 引擎，那行改成 `@deepseek-ai/dsh-workflow-ptc`（仍 `disabled: true`）；`tool-subagent` 删掉了 `backgroundMode` 与 `enableRunInBackground`，留着不报错但纯属死配置，已从行里移除；0.2.x 起浏览器只装载与宿主同版本的 client graph，所以宿主升级后要刷新页面，卡片才会重新挂上。第四处是 persona 的插值口径：从 0.2.1 起宿主对 `{{…}}` 做**严格**解析，未注册的变量名直接抛 `unknown prompt variable ... in section "deployment:persona-prefix"`，而 persona 里原有的 `{{cwd}}` 从来不是宿主变量（整个宿主只注册了 `provider` 与 `model`），于是预设整行装载失败、一条对话也发不出去——就是 issue #2。现已改成不依赖模板变量：工作目录取运行时上下文里 required 的 `Current working directory`（`complete` / `includeRuntimeContext` 都压不掉它），需要绝对路径时调 `working_directory` 工具查；`npm run check` 也加了一条门禁，persona 里再出现未注册变量会直接让 CI 红。
-
-`0.2.2-alpha.2` 上确实动了一件与本预设有关的事：`@deepseek-ai/dsh-tool-subagent-control/list-agents` **这个子路径入口没有了**——`list_agents` 工具并进该包主入口，出厂 `standard` 也在同一版删掉了自己的 `tool-subagent-list-agents` 行。所以这一行改成探测而非硬写：`disabled` 去 resolve 子路径，探不到就禁用整行——0.2.1 上工具照常可用，0.2.2 上不会重复注册；`disabled` 行在 Loader 解析包名之前就被过滤，缺这个子路径的宿主不会因此丢掉别的行。0.2.2 另外两件与本包**无关**的事实：`tool-subagent` 把 `modelSelectionSettings` 改名成 `modelSelection`（本预设从没设过这个键），以及 `{{…}}` 插值机制本身没变——persona 已经不再引用任何模板变量，已注册变量的集合不是本预设依赖的东西。`template/agent.cordis.yml` 是整份行列表的唯一来源：`cordis.patch.yml` 的生成区由 `node scripts/sync-preset-patch.mjs` 从它生成，所以探测写在模板里、补丁重新生成，不要手改生成区。
-
-插件能不能加载，在它的代码跑起来之前就定完了：从 `0.1.7-rc.1` 起宿主会拿 `peerDependencies` 里每一个 `@deepseek-ai/dsh*` 范围去比对当前版本，对不上就把整行禁用；从 `0.2.1-alpha.4` 起改成先看 `engines.dsh`——只要写了它，就只由它决定，`peerDependencies` 不再参与（两条规则分别在 `0.2.1-alpha.3` 与 `0.2.1-rc.2` 的宿主代码上实测过）。所以两份清单都留着：从 `0.1.6-alpha.1` 点名到 `0.2.2-alpha.2`，再以 `>=0.1.7-alpha.1` 开区间收尾、不写上界——因为本插件不绑定任何特定宿主构建：走哪条路由它自己的版本门控在装载时才决定，那么一个还没人核对过的版本也该照常把插件跑起来，而不是被一道失败即关的检查整个挡掉。开区间之前被点名的版本才是真正逐一比对过的。开区间不承诺的是契约变更后的行为：将来若出事，先坏的会是声明式预设行，而那一次的修改属于 patch 文件，不属于范围——同理，开区间只保证「能装载」，不代表这份预设会跟着出厂 `standard` 一起长新行；出厂新增的 `time-context`、`tool-schedule`、`plugin-market/tools` 本预设至今不带，要跟上得改 `cordis.patch.yml`。装到此前拒绝本插件的宿主上要重启 `dsh web`，因为这个判定发生在 profile 组装阶段。
-
-`0.1.5` 起 persona 使用 `@deepseek-ai/dsh-persona` 的新配置字段 `prefix`（0.1.2-rc.1 的旧字段 `text` 已移除），更老的宿主需要手工把 persona 行的 `text:` 改名成 `prefix:`（`complete` / `includeRuntimeContext` 不变）。每个宿主 home 各持一份铺设副本，旧 home 的 `text:` 副本切回旧宿主仍可用。
+要求 **dsh >= 0.2.1**。预设以 profile patch 里的声明式 `@deepseek-ai/dsh-agent-preset` 行交付，数量存进本包 volatile `Config` 由宿主投影进 profile patch；装载判定只看 `engines.dsh`。`template/agent.cordis.yml` 是预设行列表的唯一来源，`cordis.patch.yml` 生成区由 `npm run check` 守护，勿手改。
 
 ## 子 agent 数量如何影响行为
 
 DSH 的 `agent/request` 瀑布只允许插件改写 LLM 路由/config，不能注入或改写 `system`/`messages`，所以「GUI → 模型提示」的动态注入不能走请求瀑布。本插件改用文件中转：
 
-1. 设置卡片把 `N` 存进宿主设置（见上表），那里才是事实源。
+1. 设置卡片把 `N` 存进宿主设置，那里才是事实源。
 2. 装载时 node 半区把它镜像到 `<dshHome>/.dsh-novel-solo-data/agent-count.json`。
 3. persona 行在预设装载时用 `!!js` 读 `template/persona.md`，把文件里的同步锚点 `并发上限 N=<数字>` 换成镜像里的数字。persona 据此决定：`N=1` 全部由主代理一人完成；`N>1` 写作/审核交给子代理、主代理只派活并静默等待。
 
-> 注意：镜像和 persona 都是在宿主装载插件的过程中解析的，所以**改完数量要重启宿主才会进到提示词**。0.1.7 的 volatile 设置在 node 侧没有变更回调，实时推送做不了。
+> 注意：镜像和 persona 都是在宿主装载插件的过程中解析的，所以**改完数量要重启宿主才会进到提示词**。volatile 设置在 node 侧没有变更回调，实时推送做不了。
 
 ## 预设内容速览
 
@@ -70,9 +52,7 @@ persona 正文在 `template/persona.md`；`template/agent.cordis.yml`（同步�
 
 预设通过行级 `disabled: true` 硬禁用：`tool-bash`、`tool-jobs`、`skill-filesystem`、`tool-skill`、`tool-goal`、`plan-mode`、`subagent_codex`、`subagent_claude_code`、`workflow-ptc`、`tool-workflow`、`tool-ralph`、`tool-todo`、`tool-web`。保留 `tool-fs`（read/write/edit，`read_image` 关掉）、`tool-fs-search`（glob/grep）、`str-replace-editor`（view/create/str_replace/insert）、`tool-pwsh`（已解禁，仅做文件系统管理：改文件夹/文件名、删除文件夹/文件）、`subagent`/`subagent_fork`、`list_agents` 等。
 
-0.2.1 的 `standard` 预设又长出四条模型可见的工具链，本预设逐条筛过、一条都不要：`tool-schedule`（定时任务）、`command-goal`（`/goal` 命令）、`tool-present`（交付物演示）、`plugin-manager` / `plugin-market` 的 `tools`。它们都以 `disabled: true` 的行显式写在那里——预设的 `plugins` 是完整组合，漏写就已经不挂载，但宿主自己在 web 层用的就是「禁用而不删除」，因为漏写的行会在有人重排组合的那天悄悄长回来；`disabled` 行先于名称解析被过滤，老宿主上没有这些包也不会致命。`agent-instructions`（AGENTS.md 注入）与 `time-context`（时间上文）两个纯提示词行干脆不写：本预设 `complete: true`，写了也用不上。
-
-还有一件不在本预设管辖范围：`working_directory` 工具是宿主平面的行，任何会话都会拿到，插件压不掉；persona 干脆把它当成路径真源来用。
+0.2.1 的 `standard` 预设又长出四条模型可见的工具链，本预设逐条筛过、一条都不要：`tool-schedule`（定时任务）、`command-goal`（`/goal` 命令）、`tool-present`（交付物演示）、`plugin-manager` / `plugin-market` 的 `tools`。它们都以 `disabled: true` 的行显式写在那里，防止将来有人重排组合时悄悄长回来。`agent-instructions`（AGENTS.md 注入）与 `time-context`（时间上文）两个纯提示词行干脆不写：本预设 `complete: true`，写了也用不上。`working_directory` 工具是宿主平面的行，任何会话都会拿到，插件压不掉；persona 干脆把它当成路径真源来用。
 
 随包还携带一个 **preset 作用域**的 vendored 插件（仅对挂载 `novel-solo` 预设的会话生效）：
 
@@ -81,9 +61,9 @@ persona 正文在 `template/persona.md`；`template/agent.cordis.yml`（同步�
 ## 文件结构
 
 ```
-lib/index.js        node 半区：宿主版本探测、数量镜像、设置接缝（0.1.7 volatile Config 表单 / 0.1.6 命名空间）、旧宿主预设铺设
-lib/client.js       浏览器半区：「子 agent 数量」卡片，分别挂到 plugins.item（0.1.7）与 settings.plugin.item（0.1.6）
-cordis.patch.yml    安装进 web profile 的层：插件行 + 声明式 novel-solo 预设行（0.1.7 以下禁用该行）
+lib/index.js        node 半区：数量镜像 + 设置接缝（volatile Config 表单，关掉宿主自动生成设置页）
+lib/client.js       浏览器半区：「子 agent 数量」卡片，经 configForms 挂到 plugins.item 插槽
+cordis.patch.yml    安装进 web profile 的层：插件行 + 声明式 novel-solo 预设行
 cordis.yml          开发用 overlay：只插插件行、不带预设
 template/           novel-solo 预设（agent.cordis.yml + persona.md + preset.yml + vendored 插件），随包分发
 scripts/sync-preset-patch.mjs  把 template/agent.cordis.yml 同步进 patch 的生成区，`--check` 校验一致性，并拦下 persona 里宿主不认识的 `{{变量}}`
@@ -97,8 +77,6 @@ package.json        dsh.bundle / dsh.client 元数据，使插件可被插件市
 | 变量 | 作用 | 默认 |
 |---|---|---|
 | `DSH_HOME` | dsh 根目录 | `~/.dsh` |
-| `DSH_NOVEL_SKIP_DEPLOY` | `1` 时跳过预设铺设（只影响旧宿主路径） | 无 |
-| `DSH_NOVEL_REDEPLOY` | `1` 时强制覆盖已存在的预设（慎用） | 无 |
 
 ## 特殊说明
 
